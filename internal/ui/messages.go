@@ -1,10 +1,15 @@
 package ui
 
 import (
+	"context"
+	"errors"
 	"time"
 
-	tea "charm.land/bubbletea/v2"
+	"clocky/internal/configweb"
+	"clocky/internal/data"
 	"clocky/internal/imaging"
+
+	tea "charm.land/bubbletea/v2"
 )
 
 type tickMsg time.Time
@@ -16,12 +21,19 @@ type coverLoadedMsg struct {
 	cover string
 	err   error
 }
+type spotifyPollMsg time.Time
+type spotifyTrackMsg struct {
+	track data.Track
+	err   error
+}
+type configurationServerMsg struct{ err error }
 
 const (
-	refreshInterval    = 5 * time.Minute
-	marketPageInterval = 4 * time.Second
-	marketFrameDelay   = 45 * time.Millisecond
-	marketSlideSteps   = 8
+	refreshInterval     = 10 * time.Minute
+	marketPageInterval  = 4 * time.Second
+	marketFrameDelay    = 45 * time.Millisecond
+	marketSlideSteps    = 8
+	spotifyPollInterval = 5 * time.Second
 )
 
 func tickEvery() tea.Cmd {
@@ -38,6 +50,31 @@ func rotateMarketAfter() tea.Cmd {
 
 func marketFrameAfter() tea.Cmd {
 	return tea.Tick(marketFrameDelay, func(t time.Time) tea.Msg { return marketFrameMsg(t) })
+}
+
+func pollSpotifyAfter() tea.Cmd {
+	return tea.Tick(spotifyPollInterval, func(t time.Time) tea.Msg { return spotifyPollMsg(t) })
+}
+
+func fetchSpotifyTrack(client *data.SpotifyClient) tea.Cmd {
+	return func() tea.Msg {
+		if client == nil {
+			return spotifyTrackMsg{err: errors.New("Spotify is not configured")}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
+		defer cancel()
+		track, err := client.CurrentTrack(ctx)
+		return spotifyTrackMsg{track: track, err: err}
+	}
+}
+
+func serveConfiguration(server *configweb.Server) tea.Cmd {
+	if server == nil {
+		return nil
+	}
+	return func() tea.Msg {
+		return configurationServerMsg{err: server.Serve(context.Background())}
+	}
 }
 
 func loadAndRenderCover(url string) tea.Cmd {

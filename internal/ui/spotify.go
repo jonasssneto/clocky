@@ -20,6 +20,13 @@ func formatTrackTime(seconds int) string {
 	return fmt.Sprintf("%d:%02d", seconds/60, seconds%60)
 }
 
+func (m Model) spotifyStatus() string {
+	if m.configErr != "" {
+		return "Configuration server: " + m.configErr
+	}
+	return m.spotifyErr
+}
+
 func renderProgressBar(width, elapsed, total int) string {
 	width = max(1, width)
 	filled := 0
@@ -43,7 +50,7 @@ func renderPlaybackLine(artist string, width int, playing bool) string {
 	return dim.Render(artist) + strings.Repeat(" ", spacing) + spotify.Render(icon)
 }
 
-func renderSpotifyBox(width, height int, track data.Track, cover string) string {
+func renderSpotifyBox(width, height int, track data.Track, cover, status, loginURL string) string {
 	if height < boxStyle.GetVerticalFrameSize()+1 {
 		return ""
 	}
@@ -52,6 +59,17 @@ func renderSpotifyBox(width, height int, track data.Track, cover string) string 
 	duration := formatTrackTime(track.TotalSec)
 	if cover == "" {
 		cover = spotify.Render(imaging.RenderCover(nil, spotifyCoverWidth, spotifyCoverHeight))
+	}
+	if track.Title == "" {
+		lines := []string{spotify.Render("Spotify"), truncateLine(status, innerWidth)}
+		if loginURL != "" {
+			lines = append(lines, dim.Render(truncateLine(loginURL, innerWidth)))
+		}
+		content := strings.Join(lines, "\n")
+		if innerWidth >= spotifyCoverWidth+12 {
+			content = lipgloss.JoinHorizontal(lipgloss.Top, cover, "  ", content)
+		}
+		return boxStyle.Width(width).Height(height).Render(content)
 	}
 
 	var content string

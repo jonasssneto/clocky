@@ -83,7 +83,7 @@ func (m Model) View() tea.View {
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderTodayMarketsRow(leftWidth, newsHeight, m),
-			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover),
+			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
@@ -100,7 +100,7 @@ func (m Model) View() tea.View {
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderTodayMarketsRow(leftWidth, newsHeight, m),
-			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover),
+			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
