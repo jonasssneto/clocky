@@ -8,7 +8,7 @@ import (
 func renderTodayMarketsRow(width, height int, m Model) string {
 	compactHeight := boxStyle.GetVerticalFrameSize() + 1
 	if height >= compactHeight*2 {
-		todayHeight := min(boxStyle.GetVerticalFrameSize()+5, height-compactHeight)
+		todayHeight := min(boxStyle.GetVerticalFrameSize()+4, height-compactHeight)
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderTodayBox(width, todayHeight, m.now, m.overview),
@@ -17,15 +17,19 @@ func renderTodayMarketsRow(width, height int, m Model) string {
 	}
 
 	const gap = 1
-	availableWidth := max(2, width-gap)
-	todayWidth := availableWidth / 2
-	marketsWidth := availableWidth - todayWidth
+	todayWidth, marketsWidth := splitColumns(width, gap)
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		renderTodayBox(todayWidth, height, m.now, m.overview),
 		" ",
 		renderMarketsBox(marketsWidth, height, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
 	)
+}
+
+func splitColumns(width, gap int) (int, int) {
+	availableWidth := max(2, width-gap)
+	leftWidth := (availableWidth + 1) / 2
+	return leftWidth, availableWidth - leftWidth
 }
 
 func (m Model) View() tea.View {
@@ -35,7 +39,6 @@ func (m Model) View() tea.View {
 	todayCol := renderTodayColumn(m.today)
 	tomorrowCol := renderTomorrowColumn(m.tomorrow)
 	frameWidth := boxStyle.GetHorizontalFrameSize()
-	idealClockWidth := lipgloss.Width(renderLargeClock(m.now)) + frameWidth
 	compactClockWidth := max(
 		lipgloss.Width(m.now.Format("15:04:05")),
 		lipgloss.Width(m.now.Format("Mon, 02 Jan 2006")),
@@ -45,14 +48,7 @@ func (m Model) View() tea.View {
 	twoColumns := width >= compactClockWidth+columnGap+stackedWeatherWidth
 	leftWidth, rightWidth := width, width
 	if twoColumns {
-		availableWidth := width - columnGap
-		minimumClockWidth := compactClockWidth
-		if width >= idealClockWidth+columnGap+stackedWeatherWidth {
-			minimumClockWidth = idealClockWidth
-		}
-		leftWidth = max(minimumClockWidth, availableWidth*2/5)
-		leftWidth = min(leftWidth, availableWidth-stackedWeatherWidth)
-		rightWidth = availableWidth - leftWidth
+		leftWidth, rightWidth = splitColumns(width, columnGap)
 	}
 
 	var top string
@@ -93,9 +89,7 @@ func (m Model) View() tea.View {
 		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
 		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
 	} else if !twoColumns && width >= 30 && bottomHeight >= boxStyle.GetVerticalFrameSize()+1+mediaHeight {
-		availableWidth := width - columnGap
-		leftWidth = availableWidth / 2
-		rightWidth = availableWidth - leftWidth
+		leftWidth, rightWidth = splitColumns(width, columnGap)
 		newsHeight := bottomHeight - mediaHeight
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,

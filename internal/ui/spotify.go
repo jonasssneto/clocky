@@ -11,9 +11,9 @@ import (
 )
 
 const (
-	// Each "▀" combines two vertical pixels; 10x5 cells create a 10x10 cover.
-	spotifyCoverWidth  = 10
-	spotifyCoverHeight = 5
+	// Each "▀" combines two vertical pixels; 8x4 cells create an 8x8 cover.
+	spotifyCoverWidth  = 8
+	spotifyCoverHeight = 4
 )
 
 func formatTrackTime(seconds int) string {
@@ -66,21 +66,20 @@ func renderSpotifyBox(width, height int, track data.Track, cover, status, loginU
 			lines = append(lines, dim.Render(truncateLine(loginURL, innerWidth)))
 		}
 		content := strings.Join(lines, "\n")
-		if innerWidth >= spotifyCoverWidth+12 {
+		if innerWidth >= spotifyCoverWidth+10 {
 			content = lipgloss.JoinHorizontal(lipgloss.Top, cover, "  ", content)
 		}
 		return boxStyle.Width(width).Height(height).Render(content)
 	}
 
 	var content string
-	if innerWidth >= spotifyCoverWidth+12 {
+	if innerWidth >= spotifyCoverWidth+10 {
 		infoWidth := innerWidth - lipgloss.Width(cover) - 2
 		timeLabel := elapsed + " / " + duration
 		if lipgloss.Width(timeLabel) > infoWidth {
 			timeLabel = elapsed + "/" + duration
 		}
 		info := strings.Join([]string{
-			spotify.Render("Spotify"),
 			clockStyle.MaxWidth(infoWidth).Render(track.Title),
 			renderPlaybackLine(track.Artist, infoWidth, track.Playing),
 			renderProgressBar(infoWidth, track.ElapsedSec, track.TotalSec),
@@ -89,7 +88,6 @@ func renderSpotifyBox(width, height int, track data.Track, cover, status, loginU
 		content = lipgloss.JoinHorizontal(lipgloss.Top, cover, "  ", info)
 	} else {
 		content = strings.Join([]string{
-			spotify.Render("Spotify  ▣"),
 			clockStyle.MaxWidth(innerWidth).Render(track.Title),
 			renderPlaybackLine(track.Artist, innerWidth, track.Playing),
 			renderProgressBar(innerWidth, track.ElapsedSec, track.TotalSec),

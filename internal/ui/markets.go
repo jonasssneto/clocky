@@ -125,7 +125,7 @@ func renderMarketColumn(width, height int, title string, selected bool, assets [
 	}
 	lines = append(lines, clockStyle.Render(assetLine))
 
-	chartHeight := min(3, height-len(lines))
+	chartHeight := min(2, height-len(lines))
 	if chartHeight > 0 {
 		lines = append(lines, renderLineChart(asset.History, width, chartHeight, asset.Change >= 0)...)
 	}
