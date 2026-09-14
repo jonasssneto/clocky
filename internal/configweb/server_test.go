@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"clocky/internal/oauth"
+	"clocky/internal/settings"
 )
 
 func TestDashboardShowsIntegrationStatus(t *testing.T) {
@@ -171,6 +172,8 @@ func testServer(t *testing.T, integration oauth.Integration) *Server {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Keep parallel handler tests from persisting settings to the user's real config.
+	server.settings = &settings.Store{Snapshot: server.settings.Get()}
 	return server
 }
 
