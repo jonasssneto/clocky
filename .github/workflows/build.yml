@@ -1,0 +1,128 @@
+name: Build Clocky
+
+on:
+  push:
+    branches: [main, master]
+    tags: ["v*", "*.*.*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (for example 1.2.0); leave empty for automatic versioning"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release-version:
+    name: Determine release version
+    runs-on: ubuntu-latest
+    outputs:
+      create_release: ${{ steps.version.outputs.create_release }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Calculate version
+        id: version
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then
+            tag="$REF_NAME"
+            create_release=true
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            tag="$INPUT_VERSION"
+            if [ -z "$tag" ]; then
+              tag="v0.0.$RUN_NUMBER"
+            elif [[ "$tag" != v* ]]; then
+              tag="v$tag"
+            fi
+            create_release=true
+          else
+            tag=""
+            create_release=false
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "create_release=$create_release" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.goos }}-${{ matrix.goarch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            suffix: ""
+          - goos: linux
+            goarch: arm64
+            suffix: ""
+          - goos: linux
+            goarch: arm
+            goarm: "7"
+            suffix: ""
+          - goos: darwin
+            goarch: amd64
+            suffix: ""
+          - goos: darwin
+            goarch: arm64
+            suffix: ""
+          - goos: windows
+            goarch: amd64
+            suffix: ".exe"
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          output="dist/clocky-${GOOS}-${GOARCH}${GOARM:+v${GOARM}}${{ matrix.suffix }}"
+          go build -trimpath -ldflags="-s -w" -o "$output" .
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: clocky-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.goarm && format('-v{0}', matrix.goarm) || '' }}
+          path: dist/*
+          if-no-files-found: error
+
+  release:
+    name: Publish release
+    needs: [release-version, build]
+    if: needs.release-version.outputs.create_release == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.release-version.outputs.tag }}
+          name: Clocky ${{ needs.release-version.outputs.tag }}
+          generate_release_notes: true
+          files: release-artifacts/*
