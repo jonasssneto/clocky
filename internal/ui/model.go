@@ -56,6 +56,7 @@ func NewModel() Model {
 	}
 	configurationURL := "http://127.0.0.1:8888/"
 	visualSettings := settings.New()
+	snapshot := visualSettings.Get()
 	var configurationServer *configweb.Server
 	var configurationErr error
 	if spotifyClient != nil {
@@ -70,7 +71,6 @@ func NewModel() Model {
 	if configurationServer != nil {
 		configurationServer.SetSettings(visualSettings)
 	}
-	configureIntervals(visualSettings)
 	return Model{
 		now:            time.Now(),
 		today:          today,
@@ -79,18 +79,18 @@ func NewModel() Model {
 		github:         github,
 		track:          data.Track{},
 		overview:       data.MockTodayOverview(),
-		fundSymbols:    append([]string(nil), visualSettings.Get().FiiSymbols...),
-		stockSymbols:   append([]string(nil), visualSettings.Get().StockSymbols...),
+		fundSymbols:    append([]string(nil), snapshot.FiiSymbols...),
+		stockSymbols:   append([]string(nil), snapshot.StockSymbols...),
 		spotify:        spotifyClient,
 		configWeb:      configurationServer,
 		settings:       visualSettings,
-		weatherCity:    visualSettings.Get().WeatherCity,
-		weatherCountry: visualSettings.Get().WeatherCountry,
-		weatherKey:     visualSettings.Get().WeatherKey,
-		githubUser:     visualSettings.Get().GitHubUser,
+		weatherCity:    snapshot.WeatherCity,
+		weatherCountry: snapshot.WeatherCountry,
+		weatherKey:     snapshot.WeatherKey,
+		githubUser:     snapshot.GitHubUser,
 		githubTotal:    991,
-		rssFeeds:       append([]string(nil), visualSettings.Get().RSSFeeds...),
-		newsLimit:      visualSettings.Get().NewsLimit,
+		rssFeeds:       append([]string(nil), snapshot.RSSFeeds...),
+		newsLimit:      snapshot.NewsLimit,
 		spotifyErr:     spotifyMessage,
 		configErr:      errorMessage(configurationErr),
 		spotifyPage:    configurationURL,
@@ -108,5 +108,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), marqueeAfter(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), marqueeAfter(m.settings), refreshEvery(m.settings), rotateMarketAfter(m.settings), todayNewsAfter(m.settings), weatherAfter(m.settings), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }
