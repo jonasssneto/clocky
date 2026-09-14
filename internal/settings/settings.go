@@ -1,49 +1,66 @@
 package settings
 
-import "sync"
+import (
+	"os"
+	"path/filepath"
+	"sync"
+
+	"gopkg.in/yaml.v3"
+)
 
 type Visual struct {
-	Scale       int
-	BoxPadding  int
-	ColumnGap   int
-	ChartHeight int
-	BorderColor string
-	TextColor   string
-	DimColor    string
-	ValueColor  string
-	AccentColor string
-	Positive    string
-	Negative    string
+	Scale       int    `yaml:"scale"`
+	BoxPadding  int    `yaml:"box_padding"`
+	ColumnGap   int    `yaml:"column_gap"`
+	ChartHeight int    `yaml:"chart_height"`
+	BorderColor string `yaml:"border_color"`
+	TextColor   string `yaml:"text_color"`
+	DimColor    string `yaml:"dim_color"`
+	ValueColor  string `yaml:"value_color"`
+	AccentColor string `yaml:"accent_color"`
+	Positive    string `yaml:"positive_color"`
+	Negative    string `yaml:"negative_color"`
 }
 
 type Snapshot struct {
 	Visual
-	WeatherCity             string
-	WeatherCountry          string
-	WeatherKey              string
-	GitHubUser              string
-	RSSFeeds                []string
-	NewsLimit               int
-	RefreshMinutes          int
-	NewsRotationSeconds     int
-	MarketRotationSeconds   int
-	MarketFrameMilliseconds int
-	SpotifyPollSeconds      int
-	ViewportWidth           int
-	ViewportHeight          int
+	WeatherCity             string   `yaml:"weather_city"`
+	WeatherCountry          string   `yaml:"weather_country"`
+	WeatherKey              string   `yaml:"weather_key"`
+	GitHubUser              string   `yaml:"github_user"`
+	RSSFeeds                []string `yaml:"rss_feeds"`
+	NewsLimit               int      `yaml:"news_limit"`
+	RefreshMinutes          int      `yaml:"refresh_minutes"`
+	NewsRotationSeconds     int      `yaml:"news_rotation_seconds"`
+	MarketRotationSeconds   int      `yaml:"market_rotation_seconds"`
+	MarketFrameMilliseconds int      `yaml:"market_frame_milliseconds"`
+	SpotifyPollSeconds      int      `yaml:"spotify_poll_seconds"`
+	ViewportWidth           int      `yaml:"viewport_width"`
+	ViewportHeight          int      `yaml:"viewport_height"`
 }
 
 type Store struct {
 	mu sync.RWMutex
 	Snapshot
+	configPath string
 }
 
 func New() *Store {
-	return &Store{Snapshot: Snapshot{Visual: Visual{
+	snapshot := Snapshot{Visual: Visual{
 		Scale: 100, BoxPadding: 1, ColumnGap: 1, ChartHeight: 2,
 		BorderColor: "240", TextColor: "15", DimColor: "240", ValueColor: "228",
 		AccentColor: "#1DB954", Positive: "#39d353", Negative: "#f85149",
-	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, SpotifyPollSeconds: 5, ViewportWidth: 80, ViewportHeight: 24}}
+	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, SpotifyPollSeconds: 5, ViewportWidth: 80, ViewportHeight: 24}
+	configPath := defaultConfigPath()
+	if configPath != "" {
+		if contents, err := os.ReadFile(configPath); err == nil {
+			loaded := snapshot
+			if err := yaml.Unmarshal(contents, &loaded); err == nil {
+				snapshot = loaded
+			}
+		}
+	}
+	return &Store{Snapshot: snapshot, configPath: configPath}
 }
 
 func (s *Store) Get() Snapshot {
@@ -57,18 +74,21 @@ func (s *Store) Get() Snapshot {
 func (s *Store) SetVisual(visual Visual) {
 	s.mu.Lock()
 	s.Visual = visual
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
 func (s *Store) SetWeather(city, country, key string) {
 	s.mu.Lock()
 	s.WeatherCity, s.WeatherCountry, s.WeatherKey = city, country, key
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
 func (s *Store) SetGitHub(user string) {
 	s.mu.Lock()
 	s.GitHubUser = user
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
@@ -76,6 +96,7 @@ func (s *Store) SetRSS(feeds []string, limit int) {
 	s.mu.Lock()
 	s.RSSFeeds = append([]string(nil), feeds...)
 	s.NewsLimit = limit
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
@@ -86,11 +107,41 @@ func (s *Store) SetIntervals(refreshMinutes, newsRotationSeconds, marketRotation
 	s.MarketRotationSeconds = marketRotationSeconds
 	s.MarketFrameMilliseconds = marketFrameMilliseconds
 	s.SpotifyPollSeconds = spotifyPollSeconds
+	s.saveLocked()
 	s.mu.Unlock()
 }
 
 func (s *Store) SetViewport(width, height int) {
 	s.mu.Lock()
 	s.ViewportWidth, s.ViewportHeight = width, height
+	s.saveLocked()
 	s.mu.Unlock()
+}
+
+func defaultConfigPath() string {
+	configDirectory, err := os.UserConfigDir()
+	if err != nil || configDirectory == "" {
+		return ""
+	}
+	return filepath.Join(configDirectory, "clocky", "config.yaml")
+}
+
+func (s *Store) saveLocked() {
+	if s.configPath == "" {
+		return
+	}
+	contents, err := yaml.Marshal(s.Snapshot)
+	if err != nil {
+		return
+	}
+	if err := os.MkdirAll(filepath.Dir(s.configPath), 0o700); err != nil {
+		return
+	}
+	temporaryPath := s.configPath + ".tmp"
+	if err := os.WriteFile(temporaryPath, contents, 0o600); err != nil {
+		return
+	}
+	if err := os.Rename(temporaryPath, s.configPath); err != nil {
+		_ = os.Remove(temporaryPath)
+	}
 }
