@@ -29,6 +29,17 @@ func TestMockDataReturnsIndependentRealisticValues(t *testing.T) {
 }
 
 func TestWeatherHelpers(t *testing.T) {
+	for _, test := range []struct {
+		input float64
+		want  int
+	}{
+		{input: 21.6, want: 22},
+		{input: -2.6, want: -2},
+	} {
+		if got := roundedProviderValue(test.input); got != test.want {
+			t.Errorf("roundedProviderValue(%v) = %d, want %d", test.input, got, test.want)
+		}
+	}
 	if got := rainProbability([]int{10, 80, 20, 90}, 1); got != 90 {
 		t.Fatalf("rainProbability = %d, want 90", got)
 	}
