@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"html/template"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -28,14 +29,16 @@ import (
 var templateFiles embed.FS
 
 type Server struct {
-	listenAddress string
-	pageURL       string
-	csrfToken     string
-	templates     *template.Template
-	integrations  map[string]oauth.Integration
-	settings      *settings.Store
-	mu            sync.RWMutex
-	pending       map[string]pendingAuthorization
+	listenAddress   string
+	pageURL         string
+	csrfToken       string
+	templates       *template.Template
+	integrations    map[string]oauth.Integration
+	settings        *settings.Store
+	marketSearchURL string
+	httpClient      *http.Client
+	mu              sync.RWMutex
+	pending         map[string]pendingAuthorization
 }
 
 type pendingAuthorization struct {
@@ -108,13 +111,15 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 		registered[integration.ID()] = integration
 	}
 	return &Server{
-		listenAddress: parsed.Host,
-		pageURL:       parsed.String(),
-		csrfToken:     csrfToken,
-		templates:     templates,
-		integrations:  registered,
-		settings:      visualSettings,
-		pending:       make(map[string]pendingAuthorization),
+		listenAddress:   parsed.Host,
+		pageURL:         parsed.String(),
+		csrfToken:       csrfToken,
+		templates:       templates,
+		integrations:    registered,
+		settings:        visualSettings,
+		marketSearchURL: "https://brapi.dev/api/v2/tickers",
+		httpClient:      &http.Client{Timeout: 8 * time.Second},
+		pending:         make(map[string]pendingAuthorization),
 	}, nil
 }
 
@@ -170,12 +175,75 @@ func (s *Server) Handler() http.Handler {
 			s.handleSettings(writer, request)
 		case request.URL.Path == "/api/releases":
 			s.handleReleases(writer, request)
+		case request.URL.Path == "/api/market-symbols":
+			s.handleMarketSymbols(writer, request)
 		case strings.HasPrefix(request.URL.Path, "/integrations/"):
 			s.handleIntegration(writer, request)
 		default:
 			s.handleCallback(writer, request)
 		}
 	})
+}
+
+type marketSymbolResult struct {
+	Symbol  string `json:"symbol"`
+	Name    string `json:"name"`
+	SubType string `json:"subType"`
+}
+
+func (s *Server) handleMarketSymbols(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet {
+		methodNotAllowed(writer, http.MethodGet)
+		return
+	}
+	query := strings.TrimSpace(request.URL.Query().Get("q"))
+	if len(query) < 2 || len(query) > 40 {
+		http.Error(writer, "Enter between 2 and 40 characters", http.StatusBadRequest)
+		return
+	}
+	values := url.Values{
+		"search":    {query},
+		"limit":     {"8"},
+		"sortBy":    {"volume"},
+		"sortOrder": {"desc"},
+	}
+	switch request.URL.Query().Get("kind") {
+	case "fii":
+		values.Set("subType", "fii")
+	case "stock":
+		values.Set("subType", "stock")
+	default:
+		http.Error(writer, "Invalid market asset kind", http.StatusBadRequest)
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 8*time.Second)
+	defer cancel()
+	providerRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, s.marketSearchURL+"?"+values.Encode(), nil)
+	if err != nil {
+		http.Error(writer, "Unable to prepare market search", http.StatusInternalServerError)
+		return
+	}
+	providerRequest.Header.Set("Accept", "application/json")
+	providerRequest.Header.Set("User-Agent", "Clocky configuration")
+	response, err := s.httpClient.Do(providerRequest)
+	if err != nil {
+		http.Error(writer, "Market search is temporarily unavailable", http.StatusBadGateway)
+		return
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		http.Error(writer, "Market search is temporarily unavailable", http.StatusBadGateway)
+		return
+	}
+	var payload struct {
+		Results []marketSymbolResult `json:"results"`
+	}
+	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&payload); err != nil {
+		http.Error(writer, "Market search returned an invalid response", http.StatusBadGateway)
+		return
+	}
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	_ = json.NewEncoder(writer).Encode(payload.Results)
 }
 
 func (s *Server) handleReleases(writer http.ResponseWriter, request *http.Request) {
@@ -220,7 +288,7 @@ func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Reque
 		http.Error(writer, "Unable to prepare dashboard", http.StatusInternalServerError)
 		return
 	}
-	writer.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'nonce-"+scriptNonce+"'; style-src 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8888 http://localhost:8888; base-uri 'none'; frame-ancestors 'none'")
+	writer.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'nonce-"+scriptNonce+"'; style-src 'unsafe-inline'; connect-src 'self' https://nominatim.openstreetmap.org http://127.0.0.1:8888 http://localhost:8888; base-uri 'none'; frame-ancestors 'none'")
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = s.templates.ExecuteTemplate(writer, "dashboard.html", pageData{
 		Notice:       request.URL.Query().Get("notice"),
@@ -266,16 +334,18 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
 	s.settings.SetGitHub(strings.TrimSpace(request.Form.Get("github_user")))
 	feeds := make([]string, 0, 12)
-	for _, line := range strings.Split(request.Form.Get("rss_feeds"), "\n") {
-		line = strings.TrimSpace(line)
-		if line != "" && (strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://")) && len(feeds) < 12 {
-			feeds = append(feeds, line)
+	for _, value := range request.Form["rss_feeds"] {
+		for _, line := range strings.Split(value, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" && (strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://")) && len(feeds) < 12 {
+				feeds = append(feeds, line)
+			}
 		}
 	}
 	limit := boundedFormInt(request, "news_limit", s.settings.Get().NewsLimit, 1, 20)
 	s.settings.SetRSS(feeds, limit)
-	fiiSymbols := marketSymbols(request.Form.Get("fii_symbols"))
-	stockSymbols := marketSymbols(request.Form.Get("stock_symbols"))
+	fiiSymbols := marketSymbols(strings.Join(request.Form["fii_symbols"], ","))
+	stockSymbols := marketSymbols(strings.Join(request.Form["stock_symbols"], ","))
 	s.settings.SetMarketSymbols(fiiSymbols, stockSymbols)
 	s.settings.SetIntervals(
 		boundedFormInt(request, "refresh_minutes", s.settings.Get().RefreshMinutes, 1, 120),

@@ -2,6 +2,7 @@ package configweb
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -49,6 +50,8 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		"weather_key":           {"optional-key"},
 		"github_user":           {"octocat"},
 		"rss_feeds":             {"https://example.com/feed.xml\nhttps://example.org/rss"},
+		"fii_symbols":           {"MXRF11", "VINO11", "KNCR11", "XPML11"},
+		"stock_symbols":         {"VALE3", "PETR4"},
 		"news_limit":            {"5"},
 		"news_rotation_seconds": {"90"},
 	}
@@ -63,6 +66,46 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" || server.settings.Get().GitHubUser != "octocat" || server.settings.Get().NewsLimit != 5 || server.settings.Get().NewsRotationSeconds != 90 {
 		t.Fatalf("unexpected visual settings: %+v", visual)
 	}
+	if got := strings.Join(server.settings.Get().FiiSymbols, ","); got != "MXRF11,VINO11,KNCR11,XPML11" {
+		t.Fatalf("FII symbols = %q", got)
+	}
+	if got := strings.Join(server.settings.Get().StockSymbols, ","); got != "VALE3,PETR4" {
+		t.Fatalf("stock symbols = %q", got)
+	}
+}
+
+func TestMarketSymbolSearchFiltersFIIs(t *testing.T) {
+	t.Parallel()
+
+	server := testServer(t, &fakeIntegration{})
+	server.httpClient = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		if request.URL.Query().Get("search") != "mxrf" || request.URL.Query().Get("subType") != "fii" || request.URL.Query().Get("limit") != "8" {
+			return &http.Response{StatusCode: http.StatusBadRequest, Body: io.NopCloser(strings.NewReader("unexpected query"))}, nil
+		}
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"application/json"}},
+			Body:       io.NopCloser(strings.NewReader(`{"results":[{"symbol":"MXRF11","name":"Maxi Renda","subType":"fii"}]}`)),
+		}, nil
+	})}
+	request := httptest.NewRequest(http.MethodGet, "/api/market-symbols?q=mxrf&kind=fii", nil)
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("status = %d; body = %s", recorder.Code, recorder.Body.String())
+	}
+	for _, expected := range []string{"MXRF11", "Maxi Renda", `"subType":"fii"`} {
+		if !strings.Contains(recorder.Body.String(), expected) {
+			t.Errorf("market search does not contain %q", expected)
+		}
+	}
+}
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (fn roundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
+	return fn(request)
 }
 
 func TestConnectRedirectAndCallback(t *testing.T) {
