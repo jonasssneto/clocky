@@ -257,6 +257,8 @@ func (s *Server) handleUpdate(writer http.ResponseWriter, request *http.Request)
 	}
 	select {
 	case s.updateRequests <- UpdateRequest{Version: version}:
+		current := s.settings.Get()
+		s.settings.SetUpdates(current.UpdatesEnabled, version)
 		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
 		_ = json.NewEncoder(writer).Encode(map[string]string{"status": "accepted"})
 	default:

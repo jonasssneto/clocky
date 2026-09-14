@@ -118,6 +118,9 @@ func TestUpdateRequestRequiresCSRFAndEmitsVersion(t *testing.T) {
 		if update.Version != "v1.2.3" {
 			t.Fatalf("update version = %q", update.Version)
 		}
+		if got := server.settings.Get().UpdateVersion; got != "v1.2.3" {
+			t.Fatalf("saved update version = %q", got)
+		}
 	default:
 		t.Fatal("update request was not emitted")
 	}
