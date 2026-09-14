@@ -29,6 +29,9 @@ type Snapshot struct {
 	WeatherKey              string   `yaml:"weather_key"`
 	GitHubUser              string   `yaml:"github_user"`
 	RSSFeeds                []string `yaml:"rss_feeds"`
+	FundSymbols             []string `yaml:"fund_symbols"`
+	FiiSymbols              []string `yaml:"fii_symbols"`
+	StockSymbols            []string `yaml:"stock_symbols"`
 	NewsLimit               int      `yaml:"news_limit"`
 	RefreshMinutes          int      `yaml:"refresh_minutes"`
 	NewsRotationSeconds     int      `yaml:"news_rotation_seconds"`
@@ -61,6 +64,9 @@ func New() *Store {
 			}
 		}
 	}
+	if len(snapshot.FiiSymbols) == 0 && len(snapshot.FundSymbols) > 0 {
+		snapshot.FiiSymbols = append([]string(nil), snapshot.FundSymbols...)
+	}
 	return &Store{Snapshot: snapshot, configPath: configPath}
 }
 
@@ -69,6 +75,9 @@ func (s *Store) Get() Snapshot {
 	defer s.mu.RUnlock()
 	snapshot := s.Snapshot
 	snapshot.RSSFeeds = append([]string(nil), s.RSSFeeds...)
+	snapshot.FundSymbols = append([]string(nil), s.FundSymbols...)
+	snapshot.FiiSymbols = append([]string(nil), s.FiiSymbols...)
+	snapshot.StockSymbols = append([]string(nil), s.StockSymbols...)
 	return snapshot
 }
 
@@ -97,6 +106,22 @@ func (s *Store) SetRSS(feeds []string, limit int) {
 	s.mu.Lock()
 	s.RSSFeeds = append([]string(nil), feeds...)
 	s.NewsLimit = limit
+	s.saveLocked()
+	s.mu.Unlock()
+}
+
+func (s *Store) SetFunds(symbols []string) {
+	s.mu.Lock()
+	s.FundSymbols = append([]string(nil), symbols...)
+	s.saveLocked()
+	s.mu.Unlock()
+}
+
+func (s *Store) SetMarketSymbols(fiIs, stocks []string) {
+	s.mu.Lock()
+	s.FiiSymbols = append([]string(nil), fiIs...)
+	s.StockSymbols = append([]string(nil), stocks...)
+	s.FundSymbols = append([]string(nil), fiIs...)
 	s.saveLocked()
 	s.mu.Unlock()
 }

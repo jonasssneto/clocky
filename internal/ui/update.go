@@ -39,6 +39,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.lastRefresh = time.Now()
 		}
 
+	case fundsMsg:
+		if msg.err == nil {
+			if msg.stocks {
+				m.stocks = msg.funds
+			} else {
+				m.funds = msg.funds
+			}
+			m.marketPage, m.marketNext, m.marketStep = 0, 0, 0
+			m.marketSlide = false
+		}
+
 	case tickMsg:
 		m.now = time.Time(msg)
 		if m.track.Playing && m.track.ElapsedSec < m.track.TotalSec {
@@ -58,13 +69,18 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.rssFeeds, m.newsLimit = append([]string(nil), rss.RSSFeeds...), rss.NewsLimit
 				return m, tea.Batch(tickEvery(), fetchRSS(m.rssFeeds, m.newsLimit))
 			}
+			if funds := m.settings.Get(); !sameStrings(funds.FiiSymbols, m.fundSymbols) || !sameStrings(funds.StockSymbols, m.stockSymbols) {
+				m.fundSymbols = append([]string(nil), funds.FiiSymbols...)
+				m.stockSymbols = append([]string(nil), funds.StockSymbols...)
+				return m, tea.Batch(tickEvery(), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true))
+			}
 		}
 		return m, tickEvery()
 
 	case refreshMsg:
 		_, _, m.news, m.github = data.FetchAll()
 		m.lastRefresh = time.Time(msg)
-		return m, tea.Batch(refreshEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit))
+		return m, tea.Batch(refreshEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true))
 
 	case spotifyPollMsg:
 		return m, fetchSpotifyTrack(m.spotify)
@@ -98,8 +114,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 	case marketRotateMsg:
+		pageCount := max(len(m.stocks), len(m.funds))
+		if pageCount <= 1 {
+			return m, rotateMarketAfter()
+		}
 		if !m.marketSlide {
-			m.marketNext = (m.marketPage + 1) % 2
+			m.marketNext = (m.marketPage + 1) % pageCount
 			m.marketStep = 0
 			m.marketSlide = true
 			return m, marketFrameAfter()

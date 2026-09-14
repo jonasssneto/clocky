@@ -34,6 +34,11 @@ type rssMsg struct {
 	news []data.NewsItem
 	err  error
 }
+type fundsMsg struct {
+	funds  []data.MarketAsset
+	stocks bool
+	err    error
+}
 type coverLoadedMsg struct {
 	url   string
 	cover string
@@ -135,6 +140,15 @@ func fetchRSS(feeds []string, limit int) tea.Cmd {
 		defer cancel()
 		news, err := data.FetchRSS(ctx, feeds, limit)
 		return rssMsg{news: news, err: err}
+	}
+}
+
+func fetchMarket(symbols []string, stocks bool) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		assets, err := data.FetchMarketFunds(ctx, symbols)
+		return fundsMsg{funds: assets, stocks: stocks, err: err}
 	}
 }
 

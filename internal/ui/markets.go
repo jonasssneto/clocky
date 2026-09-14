@@ -19,7 +19,7 @@ func fitLine(text string, width int) string {
 	return line + strings.Repeat(" ", max(0, width-lipgloss.Width(line)))
 }
 
-func renderLineChart(values []float64, width, height int, rising bool) []string {
+func renderLineChart(values []float64, width, height int, change float64) []string {
 	if width <= 0 || height <= 0 {
 		return nil
 	}
@@ -77,9 +77,11 @@ func renderLineChart(values []float64, width, height int, rising bool) []string 
 	}
 	setDot(canvasWidth-1, points[canvasWidth-1])
 
-	style := negative
-	if rising {
+	style := dim
+	if change > 0 {
 		style = positive
+	} else if change < 0 {
+		style = negative
 	}
 	chart := make([]string, height)
 	for row := range canvas {
@@ -96,12 +98,48 @@ func renderLineChart(values []float64, width, height int, rising bool) []string 
 	return chart
 }
 
+func renderMarketRange(asset data.MarketAsset, width int) []string {
+	if len(asset.History) < 3 {
+		return []string{fitLine("Range unavailable", width)}
+	}
+	minimum, current, maximum := asset.History[0], asset.History[1], asset.History[2]
+	span := maximum - minimum
+	position := 0.5
+	if span > 0 {
+		position = (current - minimum) / span
+	}
+	position = max(0, min(1, position))
+	minimumLabel := strings.TrimPrefix(formatBrazilianReal(minimum), "R$ ")
+	maximumLabel := strings.TrimPrefix(formatBrazilianReal(maximum), "R$ ")
+	barWidth := max(5, width-lipgloss.Width(minimumLabel)-lipgloss.Width(maximumLabel)-10)
+	markerPosition := int(position * float64(barWidth-1))
+	left := strings.Repeat("─", markerPosition)
+	right := strings.Repeat("─", barWidth-markerPosition-1)
+	markerStyle := dim
+	if asset.Change > 0 {
+		markerStyle = positive
+	} else if asset.Change < 0 {
+		markerStyle = negative
+	}
+	rangeLine := fmt.Sprintf("%s ├%s%s%s┤ %s", minimumLabel, left, markerStyle.Render("●"), right, maximumLabel)
+	trendStyle := dim
+	if asset.Change > 0 {
+		trendStyle = positive
+	} else if asset.Change < 0 {
+		trendStyle = negative
+	}
+	currentLine := value.Render("Now "+strings.TrimPrefix(formatBrazilianReal(current), "R$ ")) + " " + trendStyle.Render(fmt.Sprintf("%+.2f%% day", asset.Change))
+	return []string{fitLine(rangeLine, width), fitLine(currentLine, width)}
+}
+
 func renderMarketColumn(width, height int, title string, selected bool, assets []data.MarketAsset, page int) []string {
 	if height <= 0 {
 		return nil
 	}
 	if len(assets) == 0 {
-		return []string{fitLine(title+" · no data", width)}
+		lines := make([]string, height)
+		lines[0] = fitLine(title+" · not configured", width)
+		return lines
 	}
 	page = max(0, min(page, len(assets)-1))
 	asset := assets[page]
@@ -110,24 +148,32 @@ func renderMarketColumn(width, height int, title string, selected bool, assets [
 		headerTitle = value.Render(title)
 	}
 	position := page + 1
-	indicator := strings.Repeat("○ ", max(0, position-1)) + "●" + strings.Repeat(" ○", max(0, len(assets)-position))
+	indicator := "● ○"
+	if position%2 == 0 {
+		indicator = "○ ●"
+	}
 	header := headerTitle + fmt.Sprintf(" %d/%d ", position, len(assets)) + dim.Render(indicator)
 	if height == 1 {
 		return []string{fitLine(fmt.Sprintf("%s · %s", title, asset.Symbol), width)}
 	}
 
 	lines := []string{header}
-	compactPrice := strings.TrimPrefix(formatBrazilianReal(asset.Price), "R$ ")
-	assetLine := fmt.Sprintf("%s %s Yld %s", asset.Symbol, compactPrice, asset.DividendYield)
-	fullAssetLine := fmt.Sprintf("%s %s · Yield %s", asset.Symbol, formatBrazilianReal(asset.Price), asset.DividendYield)
-	if lipgloss.Width(fullAssetLine) <= width {
-		assetLine = fullAssetLine
+	lines = append(lines,
+		clockStyle.Render(asset.Symbol)+" "+value.Render(formatBrazilianReal(asset.Price)),
+		dim.Render("Yield "+asset.DividendYield),
+	)
+	if len(lines) >= height {
+		lines = lines[:height]
+		for index, line := range lines {
+			lines[index] = fitLine(line, width)
+		}
+		return lines
 	}
-	lines = append(lines, clockStyle.Render(assetLine))
 
 	chartHeight := min(visualChartHeight, height-len(lines))
 	if chartHeight > 0 {
-		lines = append(lines, renderLineChart(asset.History, width, chartHeight, asset.Change >= 0)...)
+		chart := renderMarketRange(asset, width)
+		lines = append(lines, chart[:min(chartHeight, len(chart))]...)
 	}
 	for len(lines) < height {
 		lines = append(lines, "")
@@ -143,9 +189,12 @@ func renderMarketPanel(width, height, page int, stocks, funds []data.MarketAsset
 		return nil
 	}
 	if len(stocks) == 0 && len(funds) == 0 {
-		return []string{fitLine("Markets · no data", width)}
+		lines := make([]string, height)
+		lines[0] = fitLine("Markets · not configured", width)
+		return lines
 	}
-	page %= 2
+	pageCount := max(1, max(len(stocks), len(funds)))
+	page %= pageCount
 	leftWidth := max(1, width/2)
 	rightWidth := max(1, width-1-leftWidth)
 	leftLines := renderMarketColumn(leftWidth, height, "Funds", page == 0, funds, page)

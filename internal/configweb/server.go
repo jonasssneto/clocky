@@ -245,6 +245,9 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	}
 	limit := boundedFormInt(request, "news_limit", s.settings.Get().NewsLimit, 1, 20)
 	s.settings.SetRSS(feeds, limit)
+	fiiSymbols := marketSymbols(request.Form.Get("fii_symbols"))
+	stockSymbols := marketSymbols(request.Form.Get("stock_symbols"))
+	s.settings.SetMarketSymbols(fiiSymbols, stockSymbols)
 	s.settings.SetIntervals(
 		boundedFormInt(request, "refresh_minutes", s.settings.Get().RefreshMinutes, 1, 120),
 		boundedFormInt(request, "news_rotation_seconds", s.settings.Get().NewsRotationSeconds, 10, 3600),
@@ -254,6 +257,17 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),
 	)
 	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")
+}
+
+func marketSymbols(raw string) []string {
+	symbols := make([]string, 0, 20)
+	for _, token := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == '\n' || r == ';' || r == ' ' || r == '\t' }) {
+		symbol := strings.ToUpper(strings.TrimSpace(token))
+		if symbol != "" && len(symbols) < 20 {
+			symbols = append(symbols, symbol)
+		}
+	}
+	return symbols
 }
 
 func boundedFormInt(request *http.Request, name string, fallback, minimum, maximum int) int {

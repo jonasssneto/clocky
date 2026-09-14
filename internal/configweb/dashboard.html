@@ -99,6 +99,8 @@
         <label>RSS feeds <span>One HTTP(S) feed URL per line</span><textarea name="rss_feeds" rows="4" placeholder="https://example.com/feed.xml">{{range .Settings.RSSFeeds}}{{.}}
 {{end}}</textarea></label>
         <label>News limit <span>Maximum one item per feed</span><input type="number" name="news_limit" min="1" max="20" value="{{.Settings.NewsLimit}}"></label>
+        <label>FIIs <span>Use the exact B3 ticker, for example MXRF11, VINO11 or MTOF11</span><input type="text" name="fii_symbols" value="{{range $index, $symbol := .Settings.FiiSymbols}}{{if $index}}, {{end}}{{$symbol}}{{end}}" placeholder="MXRF11, VINO11, MTOF11"></label>
+        <label>Stocks <span>Use the exact B3 ticker, for example PETR4 or VALE3</span><input type="text" name="stock_symbols" value="{{range $index, $symbol := .Settings.StockSymbols}}{{if $index}}, {{end}}{{$symbol}}{{end}}" placeholder="PETR4, VALE3"></label>
         <label>Data refresh (minutes) <span>Weather, news and GitHub</span><input type="number" name="refresh_minutes" min="1" max="120" value="{{.Settings.RefreshMinutes}}"></label>
         <label>Today/News rotation (seconds) <span>Automatic card alternation</span><input type="number" name="news_rotation_seconds" min="10" max="3600" value="{{.Settings.NewsRotationSeconds}}"></label>
         <label>Weather rotation (seconds) <span>Today/Tomorrow alternation</span><input type="number" name="weather_rotation_seconds" min="10" max="3600" value="{{.Settings.WeatherRotationSeconds}}"></label>

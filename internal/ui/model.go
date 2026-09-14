@@ -22,6 +22,8 @@ type Model struct {
 	overview        data.TodayOverview
 	stocks          []data.MarketAsset
 	funds           []data.MarketAsset
+	fundSymbols     []string
+	stockSymbols    []string
 	marketPage      int
 	marketNext      int
 	marketStep      int
@@ -76,8 +78,8 @@ func NewModel() Model {
 		github:         github,
 		track:          data.Track{},
 		overview:       data.MockTodayOverview(),
-		stocks:         data.MockStocks(),
-		funds:          data.MockFunds(),
+		fundSymbols:    append([]string(nil), visualSettings.Get().FiiSymbols...),
+		stockSymbols:   append([]string(nil), visualSettings.Get().StockSymbols...),
 		spotify:        spotifyClient,
 		configWeb:      configurationServer,
 		settings:       visualSettings,
@@ -105,5 +107,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }
