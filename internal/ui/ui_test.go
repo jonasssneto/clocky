@@ -269,6 +269,18 @@ func TestSettingsChangesTriggerAsyncRefreshCommands(t *testing.T) {
 	}
 }
 
+func BenchmarkModelView(b *testing.B) {
+	b.Setenv("XDG_CONFIG_HOME", b.TempDir())
+	model := sampleModel()
+	model.settings = settings.New()
+	model.width, model.height = 120, 40
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = model.View()
+	}
+}
+
 func sampleModel() Model {
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	return Model{
