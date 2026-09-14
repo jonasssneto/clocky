@@ -40,6 +40,8 @@ type Snapshot struct {
 	MarketFrameMilliseconds int      `yaml:"market_frame_milliseconds"`
 	MarqueeMilliseconds     int      `yaml:"marquee_milliseconds"`
 	SpotifyPollSeconds      int      `yaml:"spotify_poll_seconds"`
+	UpdatesEnabled          bool     `yaml:"updates_enabled"`
+	UpdateVersion           string   `yaml:"update_version"`
 	ViewportWidth           int      `yaml:"viewport_width"`
 	ViewportHeight          int      `yaml:"viewport_height"`
 }
@@ -55,7 +57,7 @@ func New() *Store {
 		Scale: 100, BoxPadding: 1, ColumnGap: 1, ChartHeight: 2,
 		BorderColor: "240", TextColor: "15", DimColor: "240", ValueColor: "228",
 		AccentColor: "#1DB954", Positive: "#39d353", Negative: "#f85149",
-	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, WeatherRotationSeconds: 30, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, MarqueeMilliseconds: 240, SpotifyPollSeconds: 5, ViewportWidth: 80, ViewportHeight: 24}
+	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, WeatherRotationSeconds: 30, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, MarqueeMilliseconds: 240, SpotifyPollSeconds: 5, UpdatesEnabled: false, UpdateVersion: "latest", ViewportWidth: 80, ViewportHeight: 24}
 	configPath := defaultConfigPath()
 	if configPath != "" {
 		if contents, err := os.ReadFile(configPath); err == nil {
@@ -136,6 +138,17 @@ func (s *Store) SetIntervals(refreshMinutes, newsRotationSeconds, weatherRotatio
 	s.MarketFrameMilliseconds = marketFrameMilliseconds
 	s.MarqueeMilliseconds = marqueeMilliseconds
 	s.SpotifyPollSeconds = spotifyPollSeconds
+	s.saveLocked()
+	s.mu.Unlock()
+}
+
+func (s *Store) SetUpdates(enabled bool, version string) {
+	s.mu.Lock()
+	s.UpdatesEnabled = enabled
+	if version == "" {
+		version = "latest"
+	}
+	s.UpdateVersion = version
 	s.saveLocked()
 	s.mu.Unlock()
 }

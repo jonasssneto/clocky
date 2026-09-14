@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"embed"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html/template"
@@ -20,6 +21,7 @@ import (
 
 	"clocky/internal/oauth"
 	"clocky/internal/settings"
+	"clocky/internal/updater"
 )
 
 //go:embed dashboard.html result.html
@@ -46,6 +48,7 @@ type pageData struct {
 	Notice       string
 	Error        string
 	CSRFToken    string
+	ScriptNonce  string
 	Integrations []integrationView
 	Settings     settings.Snapshot
 }
@@ -165,12 +168,31 @@ func (s *Server) Handler() http.Handler {
 			s.handleDashboard(writer, request)
 		case request.URL.Path == "/settings":
 			s.handleSettings(writer, request)
+		case request.URL.Path == "/api/releases":
+			s.handleReleases(writer, request)
 		case strings.HasPrefix(request.URL.Path, "/integrations/"):
 			s.handleIntegration(writer, request)
 		default:
 			s.handleCallback(writer, request)
 		}
 	})
+}
+
+func (s *Server) handleReleases(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodGet {
+		methodNotAllowed(writer, http.MethodGet)
+		return
+	}
+	ctx, cancel := context.WithTimeout(request.Context(), 12*time.Second)
+	defer cancel()
+	releases, err := updater.ListReleases(ctx)
+	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if err != nil {
+		writer.WriteHeader(http.StatusBadGateway)
+		_ = json.NewEncoder(writer).Encode(map[string]string{"error": err.Error()})
+		return
+	}
+	_ = json.NewEncoder(writer).Encode(releases)
 }
 
 func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Request) {
@@ -193,11 +215,18 @@ func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Reque
 		})
 	}
 	sort.Slice(integrations, func(left, right int) bool { return integrations[left].Name < integrations[right].Name })
+	scriptNonce, err := randomToken(16)
+	if err != nil {
+		http.Error(writer, "Unable to prepare dashboard", http.StatusInternalServerError)
+		return
+	}
+	writer.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'nonce-"+scriptNonce+"'; style-src 'unsafe-inline'; connect-src 'self' http://127.0.0.1:8888 http://localhost:8888; base-uri 'none'; frame-ancestors 'none'")
 	writer.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_ = s.templates.ExecuteTemplate(writer, "dashboard.html", pageData{
 		Notice:       request.URL.Query().Get("notice"),
 		Error:        request.URL.Query().Get("error"),
 		CSRFToken:    s.csrfToken,
+		ScriptNonce:  scriptNonce,
 		Integrations: integrations,
 		Settings:     s.settings.Get(),
 	})
@@ -257,6 +286,11 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 		boundedFormInt(request, "marquee_ms", s.settings.Get().MarqueeMilliseconds, 80, 1000),
 		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),
 	)
+	version := strings.TrimSpace(request.Form.Get("update_version"))
+	if version == "" {
+		version = "latest"
+	}
+	s.settings.SetUpdates(request.Form.Get("updates_enabled") == "on", version)
 	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")
 }
 

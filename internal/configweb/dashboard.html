@@ -108,6 +108,11 @@
         <label>Market slide speed (milliseconds) <span>Animation frame delay</span><input type="number" name="market_frame_ms" min="10" max="1000" value="{{.Settings.MarketFrameMilliseconds}}"></label>
         <label>Long text speed (milliseconds) <span>Global marquee interval</span><input type="number" name="marquee_ms" min="80" max="1000" value="{{.Settings.MarqueeMilliseconds}}"></label>
         <label>Spotify refresh (seconds) <span>Current track polling</span><input type="number" name="spotify_poll_seconds" min="2" max="300" value="{{.Settings.SpotifyPollSeconds}}"></label>
+        <div class="update-settings">
+          <label><span>OTA updates</span><input type="checkbox" name="updates_enabled" {{if .Settings.UpdatesEnabled}}checked{{end}}> Enable update checks</label>
+          <label>Target version <span>Choose a published GitHub release</span><select id="update-version" name="update_version"><option value="latest">Latest compatible release</option><option value="{{.Settings.UpdateVersion}}" selected>{{.Settings.UpdateVersion}}</option></select></label>
+          <span id="release-status" class="location-status" role="status">Loading available releases…</span>
+        </div>
         <label>UI scale <span>50–100%</span><input type="number" name="scale" min="50" max="100" step="5" value="{{.Settings.Scale}}"></label>
         <label>Card padding <span>0–2 cells</span><input type="number" name="box_padding" min="0" max="2" value="{{.Settings.BoxPadding}}"></label>
         <label>Column gap <span>0–4 cells</span><input type="number" name="column_gap" min="0" max="4" value="{{.Settings.ColumnGap}}"></label>
@@ -127,13 +132,26 @@
 
     <footer>Available only through the local Clocky configuration endpoint.</footer>
   </main>
-  <script>
+  <script nonce="{{.ScriptNonce}}">
     (() => {
       const button = document.getElementById('use-location');
       const city = document.getElementById('weather-city');
       const country = document.querySelector('input[name="weather_country"]');
       const status = document.getElementById('location-status');
       if (!button || !city || !country || !status) return;
+
+      const releaseSelect = document.getElementById('update-version');
+      const releaseStatus = document.getElementById('release-status');
+      if (releaseSelect && releaseStatus) {
+        fetch('/api/releases').then(response => response.json().then(data => ({ok: response.ok, data}))).then(result => {
+          if (!result.ok) throw new Error(result.data.error || 'Unable to load releases');
+          const selected = releaseSelect.value;
+          releaseSelect.replaceChildren(new Option('Latest compatible release', 'latest'));
+          result.data.forEach(release => releaseSelect.add(new Option(release.tag_name, release.tag_name)));
+          releaseSelect.value = [...releaseSelect.options].some(option => option.value === selected) ? selected : 'latest';
+          releaseStatus.textContent = `${result.data.length} release(s) available.`;
+        }).catch(error => { releaseStatus.textContent = error.message; });
+      }
 
       city.addEventListener('input', () => {
         latitude.value = '';
