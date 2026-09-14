@@ -38,12 +38,12 @@ func renderGithubBox(width, height int, lastRefresh time.Time, days []data.Contr
 		total += day.Count
 	}
 
-	header := "GitHub · updated at " + lastRefresh.Format("15:04")
+	header := "GitHub · updated at " + lastRefresh.Format(shortTimeLayout)
 	if lipgloss.Width(header) > innerWidth {
-		header = "GitHub · " + lastRefresh.Format("15:04")
+		header = "GitHub · " + lastRefresh.Format(shortTimeLayout)
 	}
 	if lipgloss.Width(header) > innerWidth {
-		header = "Git " + lastRefresh.Format("15:04")
+		header = "Git " + lastRefresh.Format(shortTimeLayout)
 	}
 
 	if yearlyTotal == 0 {
@@ -79,7 +79,7 @@ func renderMonthlyGithub(width, height int, lastRefresh time.Time, days []data.C
 	if yearlyTotal == 0 {
 		yearlyTotal = 991
 	}
-	lines := []string{dim.Render(truncateLine(fmt.Sprintf("GitHub · %s · year %d · last 30 days", lastRefresh.Format("15:04"), yearlyTotal), innerWidth))}
+	lines := []string{dim.Render(truncateLine(fmt.Sprintf("GitHub · %s · year %d · last 30 days", lastRefresh.Format(shortTimeLayout), yearlyTotal), innerWidth))}
 	lastMonth := days[len(days)-30:]
 	var grid, labels strings.Builder
 	for index, day := range lastMonth {

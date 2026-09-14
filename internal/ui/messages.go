@@ -63,13 +63,9 @@ const (
 	spotifyPollInterval = 5 * time.Second
 )
 
-var intervalStore *settings.Store
-
-func configureIntervals(store *settings.Store) { intervalStore = store }
-
-func configuredIntervals() settings.Snapshot {
-	if intervalStore != nil {
-		return intervalStore.Get()
+func configuredIntervals(store *settings.Store) settings.Snapshot {
+	if store != nil {
+		return store.Get()
 	}
 	return settings.New().Get()
 }
@@ -78,49 +74,49 @@ func tickEvery() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
-func refreshEvery() tea.Cmd {
+func refreshEvery(store *settings.Store) tea.Cmd {
 	delay := refreshInterval
-	if value := configuredIntervals().RefreshMinutes; value > 0 {
+	if value := configuredIntervals(store).RefreshMinutes; value > 0 {
 		delay = time.Duration(value) * time.Minute
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return refreshMsg(t) })
 }
 
-func rotateMarketAfter() tea.Cmd {
+func rotateMarketAfter(store *settings.Store) tea.Cmd {
 	delay := marketPageInterval
-	if value := configuredIntervals().MarketRotationSeconds; value > 0 {
+	if value := configuredIntervals(store).MarketRotationSeconds; value > 0 {
 		delay = time.Duration(value) * time.Second
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return marketRotateMsg(t) })
 }
 
-func marketFrameAfter() tea.Cmd {
+func marketFrameAfter(store *settings.Store) tea.Cmd {
 	delay := marketFrameDelay
-	if value := configuredIntervals().MarketFrameMilliseconds; value > 0 {
+	if value := configuredIntervals(store).MarketFrameMilliseconds; value > 0 {
 		delay = time.Duration(value) * time.Millisecond
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return marketFrameMsg(t) })
 }
 
-func todayNewsAfter() tea.Cmd {
+func todayNewsAfter(store *settings.Store) tea.Cmd {
 	delay := todayNewsInterval
-	if value := configuredIntervals().NewsRotationSeconds; value > 0 {
+	if value := configuredIntervals(store).NewsRotationSeconds; value > 0 {
 		delay = time.Duration(value) * time.Second
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return todayNewsMsg(t) })
 }
 
-func weatherAfter() tea.Cmd {
+func weatherAfter(store *settings.Store) tea.Cmd {
 	delay := weatherInterval
-	if value := configuredIntervals().WeatherRotationSeconds; value > 0 {
+	if value := configuredIntervals(store).WeatherRotationSeconds; value > 0 {
 		delay = time.Duration(value) * time.Second
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return weatherRotateMsg(t) })
 }
 
-func marqueeAfter() tea.Cmd {
+func marqueeAfter(store *settings.Store) tea.Cmd {
 	delay := marqueeInterval
-	if value := configuredIntervals().MarqueeMilliseconds; value > 0 {
+	if value := configuredIntervals(store).MarqueeMilliseconds; value > 0 {
 		delay = time.Duration(value) * time.Millisecond
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return marqueeMsg(t) })
@@ -162,9 +158,9 @@ func fetchMarket(symbols []string, stocks bool) tea.Cmd {
 	}
 }
 
-func pollSpotifyAfter() tea.Cmd {
+func pollSpotifyAfter(store *settings.Store) tea.Cmd {
 	delay := spotifyPollInterval
-	if value := configuredIntervals().SpotifyPollSeconds; value > 0 {
+	if value := configuredIntervals(store).SpotifyPollSeconds; value > 0 {
 		delay = time.Duration(value) * time.Second
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return spotifyPollMsg(t) })

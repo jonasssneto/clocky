@@ -8,6 +8,25 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	defaultScale                   = 100
+	defaultBoxPadding              = 1
+	defaultColumnGap               = 1
+	defaultChartHeight             = 2
+	defaultNewsLimit               = 3
+	defaultRefreshMinutes          = 10
+	defaultNewsRotationSeconds     = 60
+	defaultWeatherRotationSeconds  = 30
+	defaultMarketRotationSeconds   = 4
+	defaultMarketFrameMilliseconds = 45
+	defaultMarqueeMilliseconds     = 240
+	defaultSpotifyPollSeconds      = 5
+	defaultViewportWidth           = 80
+	defaultViewportHeight          = 24
+	configurationDirectory         = "clocky"
+	configurationFilename          = "config.yaml"
+)
+
 type Visual struct {
 	Scale       int    `yaml:"scale"`
 	BoxPadding  int    `yaml:"box_padding"`
@@ -55,11 +74,7 @@ type Store struct {
 }
 
 func New() *Store {
-	snapshot := Snapshot{Visual: Visual{
-		Scale: 100, BoxPadding: 1, ColumnGap: 1, ChartHeight: 2,
-		BorderColor: "240", TextColor: "15", DimColor: "240", ValueColor: "228",
-		AccentColor: "#1DB954", Positive: "#39d353", Negative: "#f85149",
-	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, WeatherRotationSeconds: 30, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, MarqueeMilliseconds: 240, SpotifyPollSeconds: 5, UpdatesEnabled: false, UpdateVersion: "latest", ViewportWidth: 80, ViewportHeight: 24}
+	snapshot := defaultSnapshot()
 	configPath := defaultConfigPath()
 	if configPath != "" {
 		if contents, err := os.ReadFile(configPath); err == nil {
@@ -73,6 +88,37 @@ func New() *Store {
 		snapshot.FiiSymbols = append([]string(nil), snapshot.FundSymbols...)
 	}
 	return &Store{Snapshot: snapshot, configPath: configPath}
+}
+
+func defaultSnapshot() Snapshot {
+	return Snapshot{
+		Visual: Visual{
+			Scale:       defaultScale,
+			BoxPadding:  defaultBoxPadding,
+			ColumnGap:   defaultColumnGap,
+			ChartHeight: defaultChartHeight,
+			BorderColor: "240",
+			TextColor:   "15",
+			DimColor:    "240",
+			ValueColor:  "228",
+			AccentColor: "#1DB954",
+			Positive:    "#39d353",
+			Negative:    "#f85149",
+		},
+		WeatherCity:             "São Paulo",
+		WeatherCountry:          "BR",
+		NewsLimit:               defaultNewsLimit,
+		RefreshMinutes:          defaultRefreshMinutes,
+		NewsRotationSeconds:     defaultNewsRotationSeconds,
+		WeatherRotationSeconds:  defaultWeatherRotationSeconds,
+		MarketRotationSeconds:   defaultMarketRotationSeconds,
+		MarketFrameMilliseconds: defaultMarketFrameMilliseconds,
+		MarqueeMilliseconds:     defaultMarqueeMilliseconds,
+		SpotifyPollSeconds:      defaultSpotifyPollSeconds,
+		UpdateVersion:           "latest",
+		ViewportWidth:           defaultViewportWidth,
+		ViewportHeight:          defaultViewportHeight,
+	}
 }
 
 func (s *Store) Get() Snapshot {
@@ -122,11 +168,11 @@ func (s *Store) SetFunds(symbols []string) {
 	s.mu.Unlock()
 }
 
-func (s *Store) SetMarketSymbols(fiIs, stocks []string) {
+func (s *Store) SetMarketSymbols(funds, stocks []string) {
 	s.mu.Lock()
-	s.FiiSymbols = append([]string(nil), fiIs...)
+	s.FiiSymbols = append([]string(nil), funds...)
 	s.StockSymbols = append([]string(nil), stocks...)
-	s.FundSymbols = append([]string(nil), fiIs...)
+	s.FundSymbols = append([]string(nil), funds...)
 	s.saveLocked()
 	s.mu.Unlock()
 }
@@ -167,7 +213,7 @@ func defaultConfigPath() string {
 	if err != nil || configDirectory == "" {
 		return ""
 	}
-	return filepath.Join(configDirectory, "clocky", "config.yaml")
+	return filepath.Join(configDirectory, configurationDirectory, configurationFilename)
 }
 
 func (s *Store) saveLocked() {

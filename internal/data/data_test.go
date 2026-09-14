@@ -29,6 +29,17 @@ func TestMockDataReturnsIndependentRealisticValues(t *testing.T) {
 }
 
 func TestWeatherHelpers(t *testing.T) {
+	for _, test := range []struct {
+		input float64
+		want  int
+	}{
+		{input: 21.6, want: 22},
+		{input: -2.6, want: -2},
+	} {
+		if got := roundedProviderValue(test.input); got != test.want {
+			t.Errorf("roundedProviderValue(%v) = %d, want %d", test.input, got, test.want)
+		}
+	}
 	if got := rainProbability([]int{10, 80, 20, 90}, 1); got != 90 {
 		t.Fatalf("rainProbability = %d, want 90", got)
 	}
@@ -91,6 +102,44 @@ func TestMarketHelpers(t *testing.T) {
 	if err != nil || assets != nil {
 		t.Fatalf("empty normalized symbols = %v, %v", assets, err)
 	}
+}
+
+func TestFetchMarketAssetClosesResponseBody(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		wantOK bool
+	}{
+		{name: "valid quote", status: http.StatusOK, body: `{"ticker":"MXRF11","preco":10.31}`, wantOK: true},
+		{name: "HTTP error", status: http.StatusBadGateway, body: "bad gateway"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			body := &trackingReadCloser{Reader: strings.NewReader(test.body)}
+			client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: test.status, Header: make(http.Header), Body: body}, nil
+			})}
+			_, ok := fetchMarketAsset(context.Background(), client, "MXRF11")
+			if ok != test.wantOK {
+				t.Fatalf("fetchMarketAsset success = %v, want %v", ok, test.wantOK)
+			}
+			if !body.closed {
+				t.Fatal("market response body was not closed")
+			}
+		})
+	}
+}
+
+type trackingReadCloser struct {
+	io.Reader
+
+	closed bool
+}
+
+func (r *trackingReadCloser) Close() error {
+	r.closed = true
+	return nil
 }
 
 func TestFetchRSSParsesSortsAndLimitsRSS(t *testing.T) {

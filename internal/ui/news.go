@@ -16,7 +16,7 @@ func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsIte
 	style := boxStyle.Width(width)
 	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
 	maxLines := height - boxStyle.GetVerticalFrameSize()
-	header := truncateLine("News · updated at "+lastRefresh.Format("15:04"), innerWidth)
+	header := truncateLine("News · updated at "+lastRefresh.Format(shortTimeLayout), innerWidth)
 	lines := []string{dim.Render(header)}
 	for index, item := range news {
 		if index >= limit || len(lines)+1 > maxLines {

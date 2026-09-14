@@ -24,7 +24,7 @@ func renderDaylight(width int, now time.Time, overview data.TodayOverview) strin
 	}
 
 	parseMinutes := func(clock string) int {
-		parsed, err := time.Parse("15:04", clock)
+		parsed, err := time.Parse(shortTimeLayout, clock)
 		if err != nil {
 			return 0
 		}
@@ -55,9 +55,9 @@ func renderTodayBox(width, height int, now time.Time, overview data.TodayOvervie
 		return boxStyle.Width(width).Height(height).Render(truncateLine(line, innerWidth))
 	}
 
-	header := "Today · updated at " + overview.UpdatedAt.Format("15:04")
+	header := "Today · updated at " + overview.UpdatedAt.Format(shortTimeLayout)
 	if innerWidth < 26 {
-		header = "Today · " + overview.UpdatedAt.Format("15:04")
+		header = "Today · " + overview.UpdatedAt.Format(shortTimeLayout)
 	}
 	holiday := fmt.Sprintf("Holiday   %s · %d days", overview.HolidayDate, overview.DaysUntil)
 	if innerWidth < 26 {

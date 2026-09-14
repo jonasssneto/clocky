@@ -5,6 +5,11 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+const (
+	minimumDashboardDimension = 1
+	minimumBottomColumnsWidth = 30
+)
+
 func renderTodayMarketsRow(width, height int, m Model) string {
 	compactHeight := boxStyle.GetVerticalFrameSize() + 1
 	if height >= compactHeight*2 {
@@ -39,19 +44,36 @@ func renderTodayNewsBox(width, height int, m Model) string {
 	return renderTodayBox(width, height, m.now, m.overview)
 }
 
+func renderDashboardBottom(m Model, leftWidth, rightWidth, height, mediaHeight int) string {
+	switchHeight := height - mediaHeight
+	leftColumn := lipgloss.JoinVertical(
+		lipgloss.Left,
+		renderMarketsBox(leftWidth, height-mediaHeight, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
+		renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
+	)
+	rightContent := lipgloss.JoinVertical(
+		lipgloss.Left,
+		renderTodayNewsBox(rightWidth, switchHeight, m),
+		renderGithubBox(rightWidth, mediaHeight, m.lastRefresh, m.github, m.githubTotal),
+	)
+	rightColumn := lipgloss.NewStyle().Height(height).AlignVertical(lipgloss.Center).Render(rightContent)
+	return lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
+}
+
 func (m Model) View() tea.View {
 	if m.settings != nil {
 		applyVisualSettings(m.settings.Get())
 	}
-	width, height := max(1, m.width), max(1, m.height)
+	width := max(minimumDashboardDimension, m.width)
+	height := max(minimumDashboardDimension, m.height)
 	columnGap := visualColumnGap
 
 	todayCol := renderTodayColumn(m.today, weatherTitle(m.weatherCity, "Today"))
 	tomorrowCol := renderTomorrowColumn(m.tomorrow, weatherTitle(m.weatherCity, "Tomorrow"))
 	frameWidth := boxStyle.GetHorizontalFrameSize()
 	compactClockWidth := max(
-		lipgloss.Width(m.now.Format("15:04:05")),
-		lipgloss.Width(m.now.Format("Mon, 02 Jan 2006")),
+		lipgloss.Width(m.now.Format(clockTimeLayout)),
+		lipgloss.Width(m.now.Format(clockDateLayout)),
 	) + frameWidth
 	stackedWeatherWidth := max(lipgloss.Width(todayCol), lipgloss.Width(tomorrowCol)) + frameWidth
 
@@ -84,42 +106,11 @@ func (m Model) View() tea.View {
 	full := top
 	bottomHeight := height - lipgloss.Height(top)
 	baseMediaHeight := boxStyle.GetVerticalFrameSize() + spotifyCoverHeight
-	if twoColumns && bottomHeight >= baseMediaHeight*2 {
-		switchHeight := bottomHeight - baseMediaHeight
-		mediaHeight := baseMediaHeight
-		githubHeight := baseMediaHeight
-		marketsHeight := bottomHeight - mediaHeight
-		leftColumn := lipgloss.JoinVertical(
-			lipgloss.Left,
-			renderMarketsBox(leftWidth, marketsHeight, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
-			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
-		)
-		rightContent := lipgloss.JoinVertical(
-			lipgloss.Left,
-			renderTodayNewsBox(rightWidth, switchHeight, m),
-			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github, m.githubTotal),
-		)
-		rightColumn := lipgloss.NewStyle().Height(bottomHeight).AlignVertical(lipgloss.Center).Render(rightContent)
-		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
-		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
-	} else if !twoColumns && width >= 30 && bottomHeight >= baseMediaHeight*2 {
+	if !twoColumns && width >= minimumBottomColumnsWidth {
 		leftWidth, rightWidth = splitColumns(width, columnGap)
-		switchHeight := bottomHeight - baseMediaHeight
-		mediaHeight := baseMediaHeight
-		githubHeight := baseMediaHeight
-		marketsHeight := bottomHeight - mediaHeight
-		leftColumn := lipgloss.JoinVertical(
-			lipgloss.Left,
-			renderMarketsBox(leftWidth, marketsHeight, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
-			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
-		)
-		rightContent := lipgloss.JoinVertical(
-			lipgloss.Left,
-			renderTodayNewsBox(rightWidth, switchHeight, m),
-			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github, m.githubTotal),
-		)
-		rightColumn := lipgloss.NewStyle().Height(bottomHeight).AlignVertical(lipgloss.Center).Render(rightContent)
-		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
+	}
+	if (twoColumns || width >= minimumBottomColumnsWidth) && bottomHeight >= baseMediaHeight*2 {
+		bottom := renderDashboardBottom(m, leftWidth, rightWidth, bottomHeight, baseMediaHeight)
 		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
 	}
 

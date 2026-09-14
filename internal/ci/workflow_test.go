@@ -1,7 +1,9 @@
 package ci
 
 import (
+	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -9,6 +11,18 @@ import (
 
 	"gopkg.in/yaml.v3"
 )
+
+func TestCoverageTargetStopsWhenTestsFail(t *testing.T) {
+	command := exec.CommandContext(context.Background(), "make", "-s", "test-coverage", "GO=false")
+	command.Dir = filepath.Join("..", "..")
+	output, err := command.CombinedOutput()
+	if err == nil {
+		t.Fatalf("coverage target succeeded after test failure:\n%s", output)
+	}
+	if strings.Contains(string(output), "meets the") {
+		t.Fatalf("coverage target reported success after test failure:\n%s", output)
+	}
+}
 
 type workflow struct {
 	On          map[string]any    `yaml:"on"`

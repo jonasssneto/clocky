@@ -10,6 +10,8 @@ var (
 	visualColumnGap   = 1
 	visualChartHeight = 2
 	visualScale       = 100
+	visualApplied     bool
+	appliedVisual     settings.Visual
 )
 
 var (
@@ -38,6 +40,9 @@ var (
 
 func applyVisualSettings(snapshot settings.Snapshot) {
 	visual := snapshot.Visual
+	if visualApplied && visual == appliedVisual {
+		return
+	}
 	visualColumnGap = max(0, min(4, visual.ColumnGap))
 	visualChartHeight = max(1, min(4, visual.ChartHeight))
 	visualScale = max(50, min(100, visual.Scale))
@@ -57,4 +62,6 @@ func applyVisualSettings(snapshot settings.Snapshot) {
 	for index, color := range []string{visual.DimColor, "#0e4429", "#006d32", "#26a641", visual.Positive} {
 		heatLevels[index] = lipgloss.NewStyle().Foreground(lipgloss.Color(color))
 	}
+	appliedVisual = visual
+	visualApplied = true
 }

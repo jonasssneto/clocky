@@ -37,7 +37,7 @@ func TestTextHelpersAreANSIWidthAware(t *testing.T) {
 }
 
 func TestClockWeatherAndNewsResponsiveRendering(t *testing.T) {
-	resetVisuals()
+	resetVisuals(t)
 	now := time.Date(2026, 9, 14, 12, 34, 56, 0, time.UTC)
 	if rows := bigText("12:x"); len(rows) != 5 || !strings.Contains(strings.Join(rows, ""), "███") {
 		t.Fatalf("unexpected big clock glyphs: %q", rows)
@@ -76,7 +76,7 @@ func TestClockWeatherAndNewsResponsiveRendering(t *testing.T) {
 }
 
 func TestTodayGithubMarketsAndSpotifyCards(t *testing.T) {
-	resetVisuals()
+	resetVisuals(t)
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	overview := data.MockTodayOverview()
 	overview.UpdatedAt = now
@@ -269,6 +269,18 @@ func TestSettingsChangesTriggerAsyncRefreshCommands(t *testing.T) {
 	}
 }
 
+func BenchmarkModelView(b *testing.B) {
+	b.Setenv("XDG_CONFIG_HOME", b.TempDir())
+	model := sampleModel()
+	model.settings = settings.New()
+	model.width, model.height = 120, 40
+	b.ReportAllocs()
+	b.ResetTimer()
+	for range b.N {
+		_ = model.View()
+	}
+}
+
 func sampleModel() Model {
 	now := time.Date(2026, 9, 14, 12, 0, 0, 0, time.UTC)
 	return Model{
@@ -288,6 +300,8 @@ func updateModel(t *testing.T, model Model, msg tea.Msg) (Model, tea.Cmd) {
 	return result, cmd
 }
 
-func resetVisuals() {
+func resetVisuals(t *testing.T) {
+	t.Helper()
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	applyVisualSettings(settings.New().Get())
 }

@@ -12,6 +12,13 @@ import (
 	"time"
 )
 
+const (
+	githubRequestTimeout    = 12 * time.Second
+	githubResponseBodyLimit = 4 << 20
+	githubMaximumDays       = 30
+	githubMaximumLevel      = 4
+)
+
 type githubContributionResponse struct {
 	Total         map[string]int `json:"total"`
 	Contributions []struct {
@@ -34,7 +41,7 @@ func FetchGitHubContributions(ctx context.Context, username string) ([]Contribut
 		return nil, 0, err
 	}
 	request.Header.Set("Accept", "application/json")
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := &http.Client{Timeout: githubRequestTimeout}
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, 0, err
@@ -44,7 +51,7 @@ func FetchGitHubContributions(ctx context.Context, username string) ([]Contribut
 		return nil, 0, fmt.Errorf("GitHub contributions API: HTTP status %d", response.StatusCode)
 	}
 	var payload githubContributionResponse
-	if err := json.NewDecoder(io.LimitReader(response.Body, 4<<20)).Decode(&payload); err != nil {
+	if err := json.NewDecoder(io.LimitReader(response.Body, githubResponseBodyLimit)).Decode(&payload); err != nil {
 		return nil, 0, err
 	}
 	if len(payload.Contributions) == 0 {
@@ -52,10 +59,10 @@ func FetchGitHubContributions(ctx context.Context, username string) ([]Contribut
 	}
 	days := make([]ContributionDay, 0, len(payload.Contributions))
 	for _, contribution := range payload.Contributions {
-		days = append(days, ContributionDay{Label: contribution.Date, Count: contribution.Count, Level: max(0, min(4, contribution.Level))})
+		days = append(days, ContributionDay{Label: contribution.Date, Count: contribution.Count, Level: max(0, min(githubMaximumLevel, contribution.Level))})
 	}
-	if len(days) > 30 {
-		days = days[len(days)-30:]
+	if len(days) > githubMaximumDays {
+		days = days[len(days)-githubMaximumDays:]
 	}
 	total := payload.Total["lastYear"]
 	if total == 0 {

@@ -11,7 +11,10 @@ import (
 	"time"
 )
 
-const releasesURL = "https://api.github.com/repos/jonasssneto/clocky/releases"
+const (
+	releasesURL           = "https://api.github.com/repos/jonasssneto/clocky/releases"
+	releaseRequestTimeout = 10 * time.Second
+)
 
 type Release struct {
 	TagName     string  `json:"tag_name"`
@@ -34,7 +37,7 @@ func ListReleases(ctx context.Context) ([]Release, error) {
 	}
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("User-Agent", "clocky-updater")
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: releaseRequestTimeout}
 	response, err := client.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("list Clocky releases: %w", err)

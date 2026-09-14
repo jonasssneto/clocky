@@ -33,7 +33,8 @@ test:
 	$(GO) test ./...
 
 test-coverage:
-	@coverage_file=$$(mktemp); \
+	@set -eu; \
+	coverage_file=$$(mktemp); \
 	trap 'rm -f "$$coverage_file"' EXIT; \
 	$(GO) test ./... -coverprofile="$$coverage_file"; \
 	total=$$($(GO) tool cover -func="$$coverage_file" | awk '/^total:/ { gsub("%", "", $$3); print $$3 }'); \

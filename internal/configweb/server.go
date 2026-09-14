@@ -25,6 +25,49 @@ import (
 	"clocky/internal/updater"
 )
 
+const (
+	csrfTokenSize                  = 32
+	scriptNonceSize                = 16
+	marketSearchURL                = "https://brapi.dev/api/v2/tickers"
+	marketSearchTimeout            = 8 * time.Second
+	marketSearchBodyLimit          = 1 << 20
+	minimumMarketQueryLength       = 2
+	maximumMarketQueryLength       = 40
+	marketSearchResultLimit        = "8"
+	releaseListTimeout             = 12 * time.Second
+	serverReadHeaderTimeout        = 5 * time.Second
+	serverWriteTimeout             = 20 * time.Second
+	serverIdleTimeout              = 30 * time.Second
+	serverShutdownTimeout          = 2 * time.Second
+	authorizationTimeout           = 15 * time.Second
+	authorizationLifetime          = 10 * time.Minute
+	maximumRSSFeeds                = 12
+	maximumMarketSymbols           = 20
+	maximumColorLength             = 16
+	minimumVisualScale             = 50
+	maximumVisualScale             = 100
+	minimumBoxPadding              = 0
+	maximumBoxPadding              = 2
+	minimumColumnGap               = 0
+	maximumColumnGap               = 4
+	minimumChartHeight             = 1
+	maximumChartHeight             = 4
+	minimumNewsLimit               = 1
+	maximumNewsLimit               = 20
+	minimumRefreshMinutes          = 1
+	maximumRefreshMinutes          = 120
+	minimumRotationSeconds         = 10
+	maximumRotationSeconds         = 3600
+	minimumMarketRotationSeconds   = 1
+	maximumMarketRotationSeconds   = 300
+	minimumMarketFrameMilliseconds = 10
+	maximumMarketFrameMilliseconds = 1000
+	minimumMarqueeMilliseconds     = 80
+	maximumMarqueeMilliseconds     = 1000
+	minimumSpotifyPollSeconds      = 2
+	maximumSpotifyPollSeconds      = 300
+)
+
 //go:embed dashboard.html result.html
 var templateFiles embed.FS
 
@@ -88,7 +131,7 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 
-	csrfToken, err := randomToken(32)
+	csrfToken, err := randomToken(csrfTokenSize)
 	if err != nil {
 		return nil, fmt.Errorf("generate configuration CSRF token: %w", err)
 	}
@@ -117,8 +160,8 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 		templates:       templates,
 		integrations:    registered,
 		settings:        visualSettings,
-		marketSearchURL: "https://brapi.dev/api/v2/tickers",
-		httpClient:      &http.Client{Timeout: 8 * time.Second},
+		marketSearchURL: marketSearchURL,
+		httpClient:      &http.Client{Timeout: marketSearchTimeout},
 		pending:         make(map[string]pendingAuthorization),
 	}, nil
 }
@@ -141,9 +184,9 @@ func (s *Server) Serve(ctx context.Context) error {
 	}
 	server := &http.Server{
 		Handler:           s.Handler(),
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      20 * time.Second,
-		IdleTimeout:       30 * time.Second,
+		ReadHeaderTimeout: serverReadHeaderTimeout,
+		WriteTimeout:      serverWriteTimeout,
+		IdleTimeout:       serverIdleTimeout,
 	}
 	serveDone := make(chan error, 1)
 	go func() {
@@ -157,7 +200,7 @@ func (s *Server) Serve(ctx context.Context) error {
 		}
 		return nil
 	case <-ctx.Done():
-		shutdownContext, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		shutdownContext, cancel := context.WithTimeout(context.Background(), serverShutdownTimeout)
 		defer cancel()
 		if err := server.Shutdown(shutdownContext); err != nil {
 			return fmt.Errorf("shut down configuration dashboard: %w", err)
@@ -198,13 +241,13 @@ func (s *Server) handleMarketSymbols(writer http.ResponseWriter, request *http.R
 		return
 	}
 	query := strings.TrimSpace(request.URL.Query().Get("q"))
-	if len(query) < 2 || len(query) > 40 {
+	if len(query) < minimumMarketQueryLength || len(query) > maximumMarketQueryLength {
 		http.Error(writer, "Enter between 2 and 40 characters", http.StatusBadRequest)
 		return
 	}
 	values := url.Values{
 		"search":    {query},
-		"limit":     {"8"},
+		"limit":     {marketSearchResultLimit},
 		"sortBy":    {"volume"},
 		"sortOrder": {"desc"},
 	}
@@ -217,7 +260,7 @@ func (s *Server) handleMarketSymbols(writer http.ResponseWriter, request *http.R
 		http.Error(writer, "Invalid market asset kind", http.StatusBadRequest)
 		return
 	}
-	ctx, cancel := context.WithTimeout(request.Context(), 8*time.Second)
+	ctx, cancel := context.WithTimeout(request.Context(), marketSearchTimeout)
 	defer cancel()
 	providerRequest, err := http.NewRequestWithContext(ctx, http.MethodGet, s.marketSearchURL+"?"+values.Encode(), nil)
 	if err != nil {
@@ -239,7 +282,7 @@ func (s *Server) handleMarketSymbols(writer http.ResponseWriter, request *http.R
 	var payload struct {
 		Results []marketSymbolResult `json:"results"`
 	}
-	if err := json.NewDecoder(io.LimitReader(response.Body, 1<<20)).Decode(&payload); err != nil {
+	if err := json.NewDecoder(io.LimitReader(response.Body, marketSearchBodyLimit)).Decode(&payload); err != nil {
 		http.Error(writer, "Market search returned an invalid response", http.StatusBadGateway)
 		return
 	}
@@ -252,7 +295,7 @@ func (s *Server) handleReleases(writer http.ResponseWriter, request *http.Reques
 		methodNotAllowed(writer, http.MethodGet)
 		return
 	}
-	ctx, cancel := context.WithTimeout(request.Context(), 12*time.Second)
+	ctx, cancel := context.WithTimeout(request.Context(), releaseListTimeout)
 	defer cancel()
 	releases, err := updater.ListReleases(ctx)
 	writer.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -284,7 +327,7 @@ func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Reque
 		})
 	}
 	sort.Slice(integrations, func(left, right int) bool { return integrations[left].Name < integrations[right].Name })
-	scriptNonce, err := randomToken(16)
+	scriptNonce, err := randomToken(scriptNonceSize)
 	if err != nil {
 		http.Error(writer, "Unable to prepare dashboard", http.StatusInternalServerError)
 		return
@@ -310,52 +353,52 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 		s.redirectWithMessage(writer, request, "error", "This settings page expired. Reload it and try again.")
 		return
 	}
-	current := s.settings.Get().Visual
-	visual := current
-	visual.Scale = boundedFormInt(request, "scale", current.Scale, 50, 100)
-	visual.BoxPadding = boundedFormInt(request, "box_padding", current.BoxPadding, 0, 2)
-	visual.ColumnGap = boundedFormInt(request, "column_gap", current.ColumnGap, 0, 4)
-	visual.ChartHeight = boundedFormInt(request, "chart_height", current.ChartHeight, 1, 4)
-	visual.BorderColor = formColor(request, "border_color", current.BorderColor)
-	visual.TextColor = formColor(request, "text_color", current.TextColor)
-	visual.DimColor = formColor(request, "dim_color", current.DimColor)
-	visual.ValueColor = formColor(request, "value_color", current.ValueColor)
-	visual.AccentColor = formColor(request, "accent_color", current.AccentColor)
-	visual.Positive = formColor(request, "positive_color", current.Positive)
-	visual.Negative = formColor(request, "negative_color", current.Negative)
+	current := s.settings.Get()
+	visual := current.Visual
+	visual.Scale = boundedFormInt(request, "scale", visual.Scale, minimumVisualScale, maximumVisualScale)
+	visual.BoxPadding = boundedFormInt(request, "box_padding", visual.BoxPadding, minimumBoxPadding, maximumBoxPadding)
+	visual.ColumnGap = boundedFormInt(request, "column_gap", visual.ColumnGap, minimumColumnGap, maximumColumnGap)
+	visual.ChartHeight = boundedFormInt(request, "chart_height", visual.ChartHeight, minimumChartHeight, maximumChartHeight)
+	visual.BorderColor = formColor(request, "border_color", visual.BorderColor)
+	visual.TextColor = formColor(request, "text_color", visual.TextColor)
+	visual.DimColor = formColor(request, "dim_color", visual.DimColor)
+	visual.ValueColor = formColor(request, "value_color", visual.ValueColor)
+	visual.AccentColor = formColor(request, "accent_color", visual.AccentColor)
+	visual.Positive = formColor(request, "positive_color", visual.Positive)
+	visual.Negative = formColor(request, "negative_color", visual.Negative)
 	s.settings.SetVisual(visual)
 	city := strings.TrimSpace(request.Form.Get("weather_city"))
 	if city == "" {
-		city = s.settings.Get().WeatherCity
+		city = current.WeatherCity
 	}
 	country := strings.ToUpper(strings.TrimSpace(request.Form.Get("weather_country")))
 	if len(country) != 2 {
-		country = s.settings.Get().WeatherCountry
+		country = current.WeatherCountry
 	}
 	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
 	s.settings.SetGitHub(strings.TrimSpace(request.Form.Get("github_user")))
-	feeds := make([]string, 0, 12)
+	feeds := make([]string, 0, maximumRSSFeeds)
 	for _, value := range request.Form["rss_feeds"] {
 		for _, line := range strings.Split(value, "\n") {
 			line = strings.TrimSpace(line)
-			if line != "" && (strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://")) && len(feeds) < 12 {
+			if line != "" && (strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://")) && len(feeds) < maximumRSSFeeds {
 				feeds = append(feeds, line)
 			}
 		}
 	}
-	limit := boundedFormInt(request, "news_limit", s.settings.Get().NewsLimit, 1, 20)
+	limit := boundedFormInt(request, "news_limit", current.NewsLimit, minimumNewsLimit, maximumNewsLimit)
 	s.settings.SetRSS(feeds, limit)
 	fiiSymbols := marketSymbols(strings.Join(request.Form["fii_symbols"], ","))
 	stockSymbols := marketSymbols(strings.Join(request.Form["stock_symbols"], ","))
 	s.settings.SetMarketSymbols(fiiSymbols, stockSymbols)
 	s.settings.SetIntervals(
-		boundedFormInt(request, "refresh_minutes", s.settings.Get().RefreshMinutes, 1, 120),
-		boundedFormInt(request, "news_rotation_seconds", s.settings.Get().NewsRotationSeconds, 10, 3600),
-		boundedFormInt(request, "weather_rotation_seconds", s.settings.Get().WeatherRotationSeconds, 10, 3600),
-		boundedFormInt(request, "market_rotation_seconds", s.settings.Get().MarketRotationSeconds, 1, 300),
-		boundedFormInt(request, "market_frame_ms", s.settings.Get().MarketFrameMilliseconds, 10, 1000),
-		boundedFormInt(request, "marquee_ms", s.settings.Get().MarqueeMilliseconds, 80, 1000),
-		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),
+		boundedFormInt(request, "refresh_minutes", current.RefreshMinutes, minimumRefreshMinutes, maximumRefreshMinutes),
+		boundedFormInt(request, "news_rotation_seconds", current.NewsRotationSeconds, minimumRotationSeconds, maximumRotationSeconds),
+		boundedFormInt(request, "weather_rotation_seconds", current.WeatherRotationSeconds, minimumRotationSeconds, maximumRotationSeconds),
+		boundedFormInt(request, "market_rotation_seconds", current.MarketRotationSeconds, minimumMarketRotationSeconds, maximumMarketRotationSeconds),
+		boundedFormInt(request, "market_frame_ms", current.MarketFrameMilliseconds, minimumMarketFrameMilliseconds, maximumMarketFrameMilliseconds),
+		boundedFormInt(request, "marquee_ms", current.MarqueeMilliseconds, minimumMarqueeMilliseconds, maximumMarqueeMilliseconds),
+		boundedFormInt(request, "spotify_poll_seconds", current.SpotifyPollSeconds, minimumSpotifyPollSeconds, maximumSpotifyPollSeconds),
 	)
 	version := strings.TrimSpace(request.Form.Get("update_version"))
 	if version == "" {
@@ -366,10 +409,10 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 }
 
 func marketSymbols(raw string) []string {
-	symbols := make([]string, 0, 20)
+	symbols := make([]string, 0, maximumMarketSymbols)
 	for _, token := range strings.FieldsFunc(raw, func(r rune) bool { return r == ',' || r == '\n' || r == ';' || r == ' ' || r == '\t' }) {
 		symbol := strings.ToUpper(strings.TrimSpace(token))
-		if symbol != "" && len(symbols) < 20 {
+		if symbol != "" && len(symbols) < maximumMarketSymbols {
 			symbols = append(symbols, symbol)
 		}
 	}
@@ -386,7 +429,7 @@ func boundedFormInt(request *http.Request, name string, fallback, minimum, maxim
 
 func formColor(request *http.Request, name, fallback string) string {
 	value := strings.TrimSpace(request.Form.Get(name))
-	if value == "" || len(value) > 16 || strings.ContainsAny(value, "{};\n\r") {
+	if value == "" || len(value) > maximumColorLength || strings.ContainsAny(value, "{};\n\r") {
 		return fallback
 	}
 	return value
@@ -433,7 +476,7 @@ func (s *Server) handleIntegration(writer http.ResponseWriter, request *http.Req
 		s.pending[authorization.State] = pendingAuthorization{
 			integration:  integration,
 			callbackPath: authorization.CallbackPath,
-			expiresAt:    time.Now().Add(10 * time.Minute),
+			expiresAt:    time.Now().Add(authorizationLifetime),
 		}
 		s.mu.Unlock()
 		http.Redirect(writer, request, authorization.URL, http.StatusSeeOther)
@@ -479,7 +522,7 @@ func (s *Server) handleCallback(writer http.ResponseWriter, request *http.Reques
 		s.renderResult(writer, http.StatusBadRequest, false, "Authorization failed", "The provider did not return an authorization code.")
 		return
 	}
-	ctx, cancel := context.WithTimeout(request.Context(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(request.Context(), authorizationTimeout)
 	defer cancel()
 	if err := pending.integration.CompleteAuthorization(ctx, code); err != nil {
 		s.renderResult(writer, http.StatusBadGateway, false, "Connection failed", err.Error())
