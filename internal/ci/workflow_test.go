@@ -1,6 +1,7 @@
 package ci
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -12,7 +13,7 @@ import (
 )
 
 func TestCoverageTargetStopsWhenTestsFail(t *testing.T) {
-	command := exec.Command("make", "-s", "test-coverage", "GO=false")
+	command := exec.CommandContext(context.Background(), "make", "-s", "test-coverage", "GO=false")
 	command.Dir = filepath.Join("..", "..")
 	output, err := command.CombinedOutput()
 	if err == nil {

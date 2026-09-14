@@ -133,6 +133,7 @@ func TestFetchMarketAssetClosesResponseBody(t *testing.T) {
 
 type trackingReadCloser struct {
 	io.Reader
+
 	closed bool
 }
 

@@ -193,10 +193,13 @@ func rainTime(times []string, probabilities []int, precipitation []float64, dayO
 	if bestIndex < 0 {
 		return ""
 	}
-	if bestIndex >= len(times) {
-		return ""
+	selectedTime := ""
+	for index, value := range times {
+		if index == bestIndex {
+			selectedTime = value
+			break
+		}
 	}
-	selectedTime := times[bestIndex]
 	if len(selectedTime) >= providerTimeEnd {
 		return selectedTime[providerTimeStart:providerTimeEnd]
 	}
