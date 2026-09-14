@@ -75,6 +75,48 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 	}
 }
 
+func TestUpdateRequestRequiresCSRFAndEmitsVersion(t *testing.T) {
+	t.Parallel()
+	server := testServer(t, &fakeIntegration{})
+	invalid := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/update", strings.NewReader("version=v1"))
+	invalid.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	invalidRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(invalidRecorder, invalid)
+	if invalidRecorder.Code != http.StatusForbidden {
+		t.Fatalf("invalid update status = %d", invalidRecorder.Code)
+	}
+	badVersion := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/update", strings.NewReader("csrf_token="+url.QueryEscape(server.csrfToken)+"&version="))
+	badVersion.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	badVersionRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(badVersionRecorder, badVersion)
+	if badVersionRecorder.Code != http.StatusBadRequest {
+		t.Fatalf("invalid version status = %d", badVersionRecorder.Code)
+	}
+	form := url.Values{"csrf_token": {server.csrfToken}, "version": {"v1.2.3"}}
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/update", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("update status = %d; body = %s", recorder.Code, recorder.Body.String())
+	}
+	second := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/update", strings.NewReader(form.Encode()))
+	second.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	secondRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(secondRecorder, second)
+	if secondRecorder.Code != http.StatusConflict {
+		t.Fatalf("duplicate update status = %d", secondRecorder.Code)
+	}
+	select {
+	case update := <-server.UpdateRequests():
+		if update.Version != "v1.2.3" {
+			t.Fatalf("update version = %q", update.Version)
+		}
+	default:
+		t.Fatal("update request was not emitted")
+	}
+}
+
 func TestMarketSymbolSearchFiltersFIIs(t *testing.T) {
 	t.Parallel()
 

@@ -491,6 +491,13 @@
       outline: none;
     }
 
+    .update-control {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
     textarea {
       resize: vertical;
       line-height: 1.6;
@@ -804,6 +811,10 @@
         width: 100%;
       }
 
+      .update-control {
+        grid-template-columns: 1fr;
+      }
+
       .rail-save { margin-top: -14px; }
     }
 
@@ -968,10 +979,10 @@
                   </div>
                 </div>
                 <label class="field">Target version<span class="field-help">Choose a published GitHub
-                    release</span><select id="update-version" name="update_version">
+                    release</span><div class="update-control"><select id="update-version" name="update_version">
                     <option value="latest">Latest compatible release</option>
                     <option value="{{.Settings.UpdateVersion}}" selected>{{.Settings.UpdateVersion}}</option>
-                  </select></label>
+                  </select><button class="primary" id="confirm-update" type="button">Update now</button></div></label>
                 <span id="release-status" class="field-status full" role="status">Loading available releases…</span>
               </div>
             </details>
@@ -1087,6 +1098,8 @@
       const status = document.getElementById('location-status');
       const releaseSelect = document.getElementById('update-version');
       const releaseStatus = document.getElementById('release-status');
+      const updateButton = document.getElementById('confirm-update');
+      const csrfToken = '{{.CSRFToken}}';
       if (releaseSelect && releaseStatus) {
         fetch('/api/releases').then(response => response.json().then(data => ({ ok: response.ok, data }))).then(result => {
           if (!result.ok) throw new Error(result.data.error || 'Unable to load releases');
@@ -1096,6 +1109,22 @@
           releaseSelect.value = [...releaseSelect.options].some(option => option.value === selected) ? selected : 'latest';
           releaseStatus.textContent = `${result.data.length} release(s) available.`;
         }).catch(error => { releaseStatus.textContent = error.message; });
+      }
+      if (updateButton && releaseSelect && releaseStatus) {
+        updateButton.addEventListener('click', async () => {
+          updateButton.disabled = true;
+          releaseStatus.textContent = 'Starting update…';
+          try {
+            const body = new URLSearchParams({ csrf_token: csrfToken, version: releaseSelect.value });
+            const response = await fetch('/api/update', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.error || 'Unable to start update');
+            releaseStatus.textContent = 'Update started. Follow the download screen in Clocky.';
+          } catch (error) {
+            releaseStatus.textContent = error.message;
+            updateButton.disabled = false;
+          }
+        });
       }
       if (button && city && country && status) {
         button.addEventListener('click', () => {
