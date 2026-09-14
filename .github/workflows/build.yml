@@ -113,6 +113,21 @@ jobs:
     if: needs.release-version.outputs.create_release == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create release tag when needed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-version.outputs.tag }}
+        run: |
+          if ! git ls-remote --exit-code origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            git tag "$RELEASE_TAG" "$GITHUB_SHA"
+            git push origin "$RELEASE_TAG"
+          fi
+
       - name: Download binaries
         uses: actions/download-artifact@v4
         with:
