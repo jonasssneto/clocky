@@ -1,0 +1,154 @@
+version: "2"
+
+# Keep this list explicit so upgrades do not silently enable new checks.
+# The selected checks automate the enforceable parts of the Uber Go Style Guide.
+linters:
+  default: none
+  enable:
+    - asciicheck
+    - bidichk
+    - bodyclose
+    - containedctx
+    - copyloopvar
+    - durationcheck
+    - embeddedstructfieldcheck
+    - errcheck
+    - errname
+    - errorlint
+    - fatcontext
+    - forcetypeassert
+    - gocheckcompilerdirectives
+    - gochecknoinits
+    - gocritic
+    - gocyclo
+    - gosec
+    - govet
+    - ineffassign
+    - makezero
+    - misspell
+    - nakedret
+    - nestif
+    - nilerr
+    - noctx
+    - nolintlint
+    - perfsprint
+    - prealloc
+    - recvcheck
+    - revive
+    - staticcheck
+    - unconvert
+    - unparam
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - whitespace
+  settings:
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - performance
+        - style
+      disabled-checks:
+        # The guide favors early returns, while this check can prefer an if/else chain.
+        - ifElseChain
+        # nil is the idiomatic request body for methods without a payload.
+        - httpNoBody
+        # Naming return values only to satisfy a linter works against concise signatures.
+        - unnamedResult
+      settings:
+        hugeParam:
+          sizeThreshold: 1024
+    gocyclo:
+      min-complexity: 30
+    nestif:
+      min-complexity: 8
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: atomic
+        - name: bool-literal-in-expr
+        - name: confusing-naming
+        - name: context-as-argument
+        - name: deep-exit
+        - name: defer
+        - name: early-return
+        - name: empty-block
+        - name: error-naming
+        - name: error-return
+        - name: error-strings
+        - name: increment-decrement
+        - name: indent-error-flow
+        - name: range
+        - name: receiver-naming
+        - name: redefines-builtin-id
+        - name: superfluous-else
+        - name: time-equal
+        - name: unconditional-recursion
+        - name: unexported-return
+        - name: unnecessary-stmt
+        - name: unreachable-code
+        - name: unused-parameter
+        - name: use-any
+        - name: var-naming
+  exclusions:
+    warn-unused: true
+    rules:
+      # Closing a fully consumed read-only body cannot affect the returned result.
+      - source: '^\s*defer (response\.Body|file)\.Close\(\)$'
+        linters:
+          - errcheck
+      # Best-effort cleanup must not replace the operation's primary error.
+      - source: '^\s*defer os\.Remove\(temporaryName\)$'
+        linters:
+          - errcheck
+      # Bubble Tea centralizes message handling in Update, making its switch naturally complex.
+      - path: internal/ui/update\.go
+        linters:
+          - gocyclo
+      # These paths are selected by trusted local configuration, not untrusted input.
+      - path: internal/(data/spotify|settings/settings)\.go
+        text: "G304:"
+        linters:
+          - gosec
+      # Persisting the Spotify token is the purpose of this JSON marshal operation.
+      - path: internal/data/spotify\.go
+        text: "G117:"
+        linters:
+          - gosec
+      # This developer diagnostic intentionally accepts market symbols from its CLI.
+      - path: tools/market_request_check\.go
+        text: "G704:"
+        linters:
+          - gosec
+      # Retain display-only update components while the OTA screen is being integrated.
+      - path: internal/ui/update_screen\.go
+        linters:
+          - unused
+      - path: internal/ui/view\.go
+        text: "renderTodayMarketsRow is unused"
+        linters:
+          - unused
+      - path: internal/ui/markets\.go
+        text: "renderLineChart is unused"
+        linters:
+          - unused
+
+formatters:
+  enable:
+    - gci
+  settings:
+    gci:
+      sections:
+        - standard
+        - default
+        - localmodule
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+run:
+  timeout: 5m
+  relative-path-mode: gomod
+  modules-download-mode: readonly
+  tests: true

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	tea "charm.land/bubbletea/v2"
+
 	"clocky/internal/ui"
 )
 
