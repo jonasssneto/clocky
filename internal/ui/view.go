@@ -76,33 +76,39 @@ func (m Model) View() tea.View {
 
 	full := top
 	bottomHeight := height - lipgloss.Height(top)
-	mediaHeight := boxStyle.GetVerticalFrameSize() + spotifyCoverHeight
-	if twoColumns && bottomHeight >= boxStyle.GetVerticalFrameSize()+1+mediaHeight {
-		newsHeight := bottomHeight - mediaHeight
+	baseMediaHeight := boxStyle.GetVerticalFrameSize() + spotifyCoverHeight
+	if twoColumns && bottomHeight >= baseMediaHeight*2 {
+		newsHeight := baseMediaHeight
+		mediaHeight := baseMediaHeight
+		githubHeight := bottomHeight - newsHeight
+		todayMarketsHeight := bottomHeight - mediaHeight
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderTodayMarketsRow(leftWidth, newsHeight, m),
+			renderTodayMarketsRow(leftWidth, todayMarketsHeight, m),
 			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderNewsBox(rightWidth, newsHeight, m.lastRefresh, m.news),
-			renderGithubBox(rightWidth, mediaHeight, m.lastRefresh, m.github),
+			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github),
 		)
 		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
 		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
-	} else if !twoColumns && width >= 30 && bottomHeight >= boxStyle.GetVerticalFrameSize()+1+mediaHeight {
+	} else if !twoColumns && width >= 30 && bottomHeight >= baseMediaHeight*2 {
 		leftWidth, rightWidth = splitColumns(width, columnGap)
-		newsHeight := bottomHeight - mediaHeight
+		newsHeight := baseMediaHeight
+		mediaHeight := baseMediaHeight
+		githubHeight := bottomHeight - newsHeight
+		todayMarketsHeight := bottomHeight - mediaHeight
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderTodayMarketsRow(leftWidth, newsHeight, m),
+			renderTodayMarketsRow(leftWidth, todayMarketsHeight, m),
 			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderNewsBox(rightWidth, newsHeight, m.lastRefresh, m.news),
-			renderGithubBox(rightWidth, mediaHeight, m.lastRefresh, m.github),
+			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github),
 		)
 		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
 		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)

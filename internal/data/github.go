@@ -1,5 +1,7 @@
 package data
 
+import "fmt"
+
 type ContributionDay struct {
 	Label string
 	Count int
@@ -7,13 +9,14 @@ type ContributionDay struct {
 }
 
 func MockContributions() []ContributionDay {
-	return []ContributionDay{
-		{Label: "Mon", Count: 0, Level: 0},
-		{Label: "Tue", Count: 1, Level: 1},
-		{Label: "Wed", Count: 0, Level: 0},
-		{Label: "Thu", Count: 2, Level: 2},
-		{Label: "Fri", Count: 3, Level: 3},
-		{Label: "Sat", Count: 1, Level: 1},
-		{Label: "Sun", Count: 3, Level: 3},
+	days := make([]ContributionDay, 0, 30*7)
+	for column := 0; column < 30; column++ {
+		for row := 0; row < 7; row++ {
+			count := (column*3 + row*5) % 6
+			days = append(days, ContributionDay{
+				Label: fmt.Sprintf("%02d", column+1), Count: count, Level: min(4, count),
+			})
+		}
 	}
+	return days
 }

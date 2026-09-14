@@ -14,9 +14,17 @@ func renderGithubBox(width, height int, lastRefresh time.Time, days []data.Contr
 		return ""
 	}
 	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
+	innerHeight := max(1, height-boxStyle.GetVerticalFrameSize())
+	if len(days) >= 30*7 && innerWidth >= 30 && innerHeight >= 8 {
+		return renderMonthlyGithub(width, height, lastRefresh, days)
+	}
+	displayDays := days
+	if len(displayDays) > 7 {
+		displayDays = displayDays[len(displayDays)-7:]
+	}
 	var labels, cells, compactCells strings.Builder
 	total := 0
-	for index, day := range days {
+	for index, day := range displayDays {
 		if index > 0 {
 			labels.WriteByte(' ')
 			cells.WriteString("   ")
@@ -57,6 +65,24 @@ func renderGithubBox(width, height int, lastRefresh time.Time, days []data.Contr
 	maxLines := height - boxStyle.GetVerticalFrameSize()
 	if len(lines) > maxLines {
 		lines = lines[:maxLines]
+	}
+	return boxStyle.Width(width).Height(height).Render(strings.Join(lines, "\n"))
+}
+
+func renderMonthlyGithub(width, height int, lastRefresh time.Time, days []data.ContributionDay) string {
+	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
+	innerHeight := max(1, height-boxStyle.GetVerticalFrameSize())
+	lines := []string{dim.Render(truncateLine("GitHub · "+lastRefresh.Format("15:04")+" · year 991 · month 30 days", innerWidth))}
+	for row := 0; row < 7 && len(lines) < innerHeight; row++ {
+		var line strings.Builder
+		for column := 0; column < 30; column++ {
+			day := days[column*7+row]
+			line.WriteString(heatLevels[min(day.Level, len(heatLevels)-1)].Render("■"))
+		}
+		lines = append(lines, lipgloss.PlaceHorizontal(innerWidth, lipgloss.Center, line.String()))
+	}
+	if len(lines) < innerHeight {
+		lines = append(lines, dim.Render("less ")+heatLevels[0].Render("■")+" "+heatLevels[2].Render("■")+" "+heatLevels[4].Render("■")+dim.Render(" more"))
 	}
 	return boxStyle.Width(width).Height(height).Render(strings.Join(lines, "\n"))
 }
