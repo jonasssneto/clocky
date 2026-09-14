@@ -1,13 +1,85 @@
 package updater
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
 	"runtime"
 	"strings"
 	"testing"
 )
+
+func TestCopyAssetReportsProgress(t *testing.T) {
+	var destination bytes.Buffer
+	var reports []Progress
+	response := updaterResponse(http.StatusOK, "clocky-binary")
+	defer response.Body.Close()
+	response.ContentLength = int64(len("clocky-binary"))
+	if err := copyAsset(response, &destination, func(progress Progress) { reports = append(reports, progress) }); err != nil {
+		t.Fatal(err)
+	}
+	if destination.String() != "clocky-binary" || len(reports) == 0 {
+		t.Fatalf("destination = %q, reports = %#v", destination.String(), reports)
+	}
+	last := reports[len(reports)-1]
+	if last.Downloaded != last.Total || last.Total != int64(len("clocky-binary")) {
+		t.Fatalf("last progress = %+v", last)
+	}
+}
+
+func TestCopyAssetReportsWriteError(t *testing.T) {
+	response := updaterResponse(http.StatusOK, "data")
+	response.Body = io.NopCloser(errorReader{})
+	defer response.Body.Close()
+	if err := copyAsset(response, io.Discard, nil); err == nil {
+		t.Fatal("copy unexpectedly succeeded")
+	}
+}
+
+func TestDownloadAndInstallRejectsHTTPError(t *testing.T) {
+	originalTransport := http.DefaultTransport
+	http.DefaultTransport = updaterRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return updaterResponse(http.StatusBadGateway, "temporary failure"), nil
+	})
+	t.Cleanup(func() { http.DefaultTransport = originalTransport })
+	if err := DownloadAndInstall(context.Background(), Asset{URL: "https://example.test/update"}, nil); err == nil {
+		t.Fatal("HTTP error unexpectedly succeeded")
+	}
+	if err := DownloadAndInstall(context.Background(), Asset{URL: "://invalid"}, nil); err == nil {
+		t.Fatal("invalid URL unexpectedly succeeded")
+	}
+	http.DefaultTransport = updaterRoundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("network down") })
+	if err := DownloadAndInstall(context.Background(), Asset{URL: "https://example.test/update"}, nil); err == nil {
+		t.Fatal("network error unexpectedly succeeded")
+	}
+}
+
+func TestRestartCurrentProcessStartsSameExecutable(t *testing.T) {
+	originalStart := startProcess
+	var startedExecutable string
+	startProcess = func(executable string, _ []string) error {
+		startedExecutable = executable
+		return nil
+	}
+	t.Cleanup(func() { startProcess = originalStart })
+	if err := RestartCurrentProcess(); err != nil {
+		t.Fatal(err)
+	}
+	if startedExecutable == "" {
+		t.Fatal("restart command did not start")
+	}
+}
+
+func TestRestartCurrentProcessReportsStartError(t *testing.T) {
+	originalStart := startProcess
+	startProcess = func(string, []string) error { return errors.New("start failed") }
+	t.Cleanup(func() { startProcess = originalStart })
+	if err := RestartCurrentProcess(); err == nil {
+		t.Fatal("restart unexpectedly succeeded")
+	}
+}
 
 func TestListReleasesFiltersDraftsAndMapsAssets(t *testing.T) {
 	originalTransport := http.DefaultTransport
@@ -65,6 +137,10 @@ func TestAssetForCurrentPlatform(t *testing.T) {
 }
 
 type updaterRoundTripFunc func(*http.Request) (*http.Response, error)
+
+type errorReader struct{}
+
+func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
 
 func (function updaterRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return function(request)

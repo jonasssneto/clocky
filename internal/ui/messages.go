@@ -11,6 +11,7 @@ import (
 	"clocky/internal/data"
 	"clocky/internal/imaging"
 	"clocky/internal/settings"
+	"clocky/internal/updater"
 )
 
 type tickMsg time.Time
@@ -51,6 +52,16 @@ type spotifyTrackMsg struct {
 	err   error
 }
 type configurationServerMsg struct{ err error }
+type updateRequestMsg configweb.UpdateRequest
+type updateProgressMsg struct {
+	version  string
+	progress updater.Progress
+}
+type updateFinishedMsg struct {
+	version string
+	err     error
+}
+type updateRestartMsg struct{ err error }
 
 const (
 	refreshInterval     = 10 * time.Minute
@@ -192,4 +203,53 @@ func loadAndRenderCover(url string) tea.Cmd {
 		cover, err := imaging.DownloadAndRenderCover(url, spotifyCoverWidth, spotifyCoverHeight)
 		return coverLoadedMsg{url: url, cover: cover, err: err}
 	}
+}
+
+func waitUpdateRequest(requests <-chan configweb.UpdateRequest) tea.Cmd {
+	return func() tea.Msg {
+		return updateRequestMsg(<-requests)
+	}
+}
+
+func waitUpdateEvent(events <-chan tea.Msg) tea.Cmd {
+	return func() tea.Msg { return <-events }
+}
+
+func runUpdate(request configweb.UpdateRequest, events chan<- tea.Msg) tea.Cmd {
+	return func() tea.Msg {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+			defer cancel()
+			releases, err := updater.ListReleases(ctx)
+			if err != nil {
+				events <- updateFinishedMsg{version: request.Version, err: err}
+				return
+			}
+			var selected updater.Release
+			for _, release := range releases {
+				if request.Version == "latest" || release.TagName == request.Version {
+					selected = release
+					break
+				}
+			}
+			if selected.TagName == "" {
+				events <- updateFinishedMsg{version: request.Version, err: errors.New("selected release is not available")}
+				return
+			}
+			asset, ok := updater.AssetForCurrentPlatform(selected)
+			if !ok {
+				events <- updateFinishedMsg{version: selected.TagName, err: errors.New("selected release has no compatible asset")}
+				return
+			}
+			err = updater.DownloadAndInstall(ctx, asset, func(progress updater.Progress) {
+				events <- updateProgressMsg{version: selected.TagName, progress: progress}
+			})
+			events <- updateFinishedMsg{version: selected.TagName, err: err}
+		}()
+		return nil
+	}
+}
+
+func restartAfterUpdate() tea.Cmd {
+	return func() tea.Msg { return updateRestartMsg{err: updater.RestartCurrentProcess()} }
 }

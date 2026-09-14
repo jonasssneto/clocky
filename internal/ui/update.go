@@ -7,6 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"clocky/internal/configweb"
 	"clocky/internal/data"
 )
 
@@ -113,6 +114,45 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.configErr = msg.err.Error()
 		}
+
+	case updateRequestMsg:
+		if m.update != nil {
+			return m, waitUpdateRequest(m.configWeb.UpdateRequests())
+		}
+		events := make(chan tea.Msg, 16)
+		m.updateEvents = events
+		m.update = &updateProgress{Version: msg.Version, Status: "Checking for the selected release…", Downloading: true}
+		return m, tea.Batch(waitUpdateEvent(events), runUpdate(configweb.UpdateRequest(msg), events))
+
+	case updateProgressMsg:
+		if m.update != nil {
+			m.update.Version = msg.version
+			m.update.Downloaded = msg.progress.Downloaded
+			m.update.Total = msg.progress.Total
+			m.update.Status = "Downloading…"
+		}
+		return m, waitUpdateEvent(m.updateEvents)
+
+	case updateFinishedMsg:
+		if m.update != nil {
+			m.update.Version = msg.version
+			m.update.Downloading = false
+			if msg.err != nil {
+				m.update.Status = "Update failed: " + msg.err.Error()
+				m.updateEvents = nil
+				return m, waitUpdateRequest(m.configWeb.UpdateRequests())
+			}
+			m.update.Status = "Restarting Clocky…"
+		}
+		m.updateEvents = nil
+		return m, restartAfterUpdate()
+
+	case updateRestartMsg:
+		if msg.err != nil && m.update != nil {
+			m.update.Status = "Update installed, but restart failed: " + msg.err.Error()
+			return m, waitUpdateRequest(m.configWeb.UpdateRequests())
+		}
+		return m, tea.Quit
 
 	case marketRotateMsg:
 		pageCount := max(len(m.stocks), len(m.funds))

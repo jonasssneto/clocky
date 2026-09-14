@@ -82,6 +82,11 @@ type Server struct {
 	httpClient      *http.Client
 	mu              sync.RWMutex
 	pending         map[string]pendingAuthorization
+	updateRequests  chan UpdateRequest
+}
+
+type UpdateRequest struct {
+	Version string
 }
 
 type pendingAuthorization struct {
@@ -163,7 +168,12 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 		marketSearchURL: marketSearchURL,
 		httpClient:      &http.Client{Timeout: marketSearchTimeout},
 		pending:         make(map[string]pendingAuthorization),
+		updateRequests:  make(chan UpdateRequest, 1),
 	}, nil
+}
+
+func (s *Server) UpdateRequests() <-chan UpdateRequest {
+	return s.updateRequests
 }
 
 func (s *Server) SetSettings(store *settings.Store) {
@@ -219,6 +229,8 @@ func (s *Server) Handler() http.Handler {
 			s.handleSettings(writer, request)
 		case request.URL.Path == "/api/releases":
 			s.handleReleases(writer, request)
+		case request.URL.Path == "/api/update":
+			s.handleUpdate(writer, request)
 		case request.URL.Path == "/api/market-symbols":
 			s.handleMarketSymbols(writer, request)
 		case strings.HasPrefix(request.URL.Path, "/integrations/"):
@@ -227,6 +239,31 @@ func (s *Server) Handler() http.Handler {
 			s.handleCallback(writer, request)
 		}
 	})
+}
+
+func (s *Server) handleUpdate(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		methodNotAllowed(writer, http.MethodPost)
+		return
+	}
+	if err := request.ParseForm(); err != nil || request.Form.Get("csrf_token") != s.csrfToken {
+		http.Error(writer, "Invalid configuration request", http.StatusForbidden)
+		return
+	}
+	version := strings.TrimSpace(request.Form.Get("version"))
+	if version == "" || len(version) > 64 || strings.ContainsAny(version, "\r\n") {
+		http.Error(writer, "Select a valid release", http.StatusBadRequest)
+		return
+	}
+	select {
+	case s.updateRequests <- UpdateRequest{Version: version}:
+		current := s.settings.Get()
+		s.settings.SetUpdates(current.UpdatesEnabled, version)
+		writer.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_ = json.NewEncoder(writer).Encode(map[string]string{"status": "accepted"})
+	default:
+		http.Error(writer, "An update is already in progress", http.StatusConflict)
+	}
 }
 
 type marketSymbolResult struct {
