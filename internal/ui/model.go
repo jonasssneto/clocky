@@ -10,37 +10,38 @@ import (
 )
 
 type Model struct {
-	now            time.Time
-	today          data.Weather
-	tomorrow       data.Forecast
-	news           []data.NewsItem
-	rssFeeds       []string
-	newsLimit      int
-	github         []data.ContributionDay
-	githubTotal    int
-	track          data.Track
-	overview       data.TodayOverview
-	stocks         []data.MarketAsset
-	funds          []data.MarketAsset
-	marketPage     int
-	marketNext     int
-	marketStep     int
-	marketSlide    bool
-	todayNewsPage  bool
-	cover          string
-	spotify        *data.SpotifyClient
-	configWeb      *configweb.Server
-	settings       *settings.Store
-	weatherCity    string
-	weatherCountry string
-	weatherKey     string
-	githubUser     string
-	spotifyErr     string
-	configErr      string
-	spotifyPage    string
-	lastRefresh    time.Time
-	width          int
-	height         int
+	now             time.Time
+	today           data.Weather
+	tomorrow        data.Forecast
+	news            []data.NewsItem
+	rssFeeds        []string
+	newsLimit       int
+	github          []data.ContributionDay
+	githubTotal     int
+	track           data.Track
+	overview        data.TodayOverview
+	stocks          []data.MarketAsset
+	funds           []data.MarketAsset
+	marketPage      int
+	marketNext      int
+	marketStep      int
+	marketSlide     bool
+	todayNewsPage   bool
+	weatherTomorrow bool
+	cover           string
+	spotify         *data.SpotifyClient
+	configWeb       *configweb.Server
+	settings        *settings.Store
+	weatherCity     string
+	weatherCountry  string
+	weatherKey      string
+	githubUser      string
+	spotifyErr      string
+	configErr       string
+	spotifyPage     string
+	lastRefresh     time.Time
+	width           int
+	height          int
 }
 
 func NewModel() Model {
@@ -104,5 +105,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

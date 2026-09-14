@@ -46,8 +46,8 @@ func (m Model) View() tea.View {
 	width, height := max(1, m.width), max(1, m.height)
 	columnGap := visualColumnGap
 
-	todayCol := renderTodayColumn(m.today, weatherTitle(m.weatherCity))
-	tomorrowCol := renderTomorrowColumn(m.tomorrow)
+	todayCol := renderTodayColumn(m.today, weatherTitle(m.weatherCity, "Today"))
+	tomorrowCol := renderTomorrowColumn(m.tomorrow, weatherTitle(m.weatherCity, "Tomorrow"))
 	frameWidth := boxStyle.GetHorizontalFrameSize()
 	compactClockWidth := max(
 		lipgloss.Width(m.now.Format("15:04:05")),
@@ -64,7 +64,7 @@ func (m Model) View() tea.View {
 	var top string
 	if twoColumns {
 		clockContent := renderClock(m.now, leftWidth)
-		weatherContent := renderWeather(m.today, m.tomorrow, rightWidth, m.weatherCity)
+		weatherContent := renderWeather(m.today, m.tomorrow, rightWidth, m.weatherCity, m.weatherTomorrow)
 		clockCardStyle := boxStyle.Width(leftWidth).Align(lipgloss.Center, lipgloss.Center)
 		weatherCardStyle := boxStyle.Width(rightWidth)
 		clockBox := clockCardStyle.Render(clockContent)
@@ -75,7 +75,7 @@ func (m Model) View() tea.View {
 		top = lipgloss.JoinHorizontal(lipgloss.Top, clockBox, " ", weatherBox)
 	} else {
 		clockContent := renderClock(m.now, compactClockWidth)
-		weatherContent := renderCompactWeather(m.today, width, m.weatherCity)
+		weatherContent := renderWeather(m.today, m.tomorrow, width, m.weatherCity, m.weatherTomorrow)
 		clockBox := boxStyle.Width(width).AlignHorizontal(lipgloss.Center).Render(clockContent)
 		weatherBox := boxStyle.Width(width).Render(weatherContent)
 		top = lipgloss.JoinVertical(lipgloss.Left, clockBox, weatherBox)

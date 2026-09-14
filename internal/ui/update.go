@@ -121,6 +121,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.todayNewsPage = !m.todayNewsPage
 		return m, todayNewsAfter()
 
+	case weatherRotateMsg:
+		m.weatherTomorrow = !m.weatherTomorrow
+		return m, weatherAfter()
+
 	case coverLoadedMsg:
 		if msg.err == nil && msg.url == m.track.CoverURL {
 			m.cover = msg.cover

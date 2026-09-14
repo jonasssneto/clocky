@@ -27,9 +27,9 @@ func renderTodayColumn(weather data.Weather, title string) string {
 	return strings.TrimRight(rendered.String(), "\n")
 }
 
-func renderTomorrowColumn(forecast data.Forecast) string {
+func renderTomorrowColumn(forecast data.Forecast, title string) string {
 	var rendered strings.Builder
-	fmt.Fprintln(&rendered, dim.Render("Tomorrow"))
+	fmt.Fprintln(&rendered, dim.Render(title))
 	lines := []string{
 		forecast.Condition,
 		fmt.Sprintf("High: %s", value.Render(fmt.Sprintf("%d°C", forecast.TempHigh))),
@@ -48,28 +48,29 @@ func renderTomorrowColumn(forecast data.Forecast) string {
 
 func renderCompactWeather(weather data.Weather, cardWidth int, city string) string {
 	innerWidth := max(1, cardWidth-boxStyle.GetHorizontalFrameSize())
-	lines := strings.Split(renderTodayColumn(weather, weatherTitle(city)), "\n")
+	lines := strings.Split(renderTodayColumn(weather, weatherTitle(city, "Today")), "\n")
 	for index, line := range lines {
 		lines[index] = truncateLine(line, innerWidth)
 	}
 	return strings.Join(lines, "\n")
 }
 
-func renderWeather(weather data.Weather, forecast data.Forecast, cardWidth int, city string) string {
-	today := renderTodayColumn(weather, weatherTitle(city))
-	tomorrow := renderTomorrowColumn(forecast)
+func renderWeather(weather data.Weather, forecast data.Forecast, cardWidth int, city string, showTomorrow bool) string {
+	if showTomorrow {
+		return renderTomorrowColumn(forecast, weatherTitle(city, "Tomorrow"))
+	}
+	today := renderTodayColumn(weather, weatherTitle(city, "Today"))
 	innerWidth := max(1, cardWidth-boxStyle.GetHorizontalFrameSize())
-	horizontal := lipgloss.JoinHorizontal(lipgloss.Top, today, dim.Render("  │  "), tomorrow)
-	if lipgloss.Width(horizontal) <= innerWidth {
-		return horizontal
+	if lipgloss.Width(today) <= innerWidth {
+		return today
 	}
 	return renderCompactWeather(weather, cardWidth, city)
 }
 
-func weatherTitle(city string) string {
+func weatherTitle(city, period string) string {
 	city = strings.TrimSpace(city)
 	if city == "" {
 		city = "São Paulo"
 	}
-	return "Weather · " + city
+	return "Weather · " + city + " · " + period
 }

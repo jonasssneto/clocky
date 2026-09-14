@@ -248,6 +248,7 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	s.settings.SetIntervals(
 		boundedFormInt(request, "refresh_minutes", s.settings.Get().RefreshMinutes, 1, 120),
 		boundedFormInt(request, "news_rotation_seconds", s.settings.Get().NewsRotationSeconds, 10, 3600),
+		boundedFormInt(request, "weather_rotation_seconds", s.settings.Get().WeatherRotationSeconds, 10, 3600),
 		boundedFormInt(request, "market_rotation_seconds", s.settings.Get().MarketRotationSeconds, 1, 300),
 		boundedFormInt(request, "market_frame_ms", s.settings.Get().MarketFrameMilliseconds, 10, 1000),
 		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),

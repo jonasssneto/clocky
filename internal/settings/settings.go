@@ -32,6 +32,7 @@ type Snapshot struct {
 	NewsLimit               int      `yaml:"news_limit"`
 	RefreshMinutes          int      `yaml:"refresh_minutes"`
 	NewsRotationSeconds     int      `yaml:"news_rotation_seconds"`
+	WeatherRotationSeconds  int      `yaml:"weather_rotation_seconds"`
 	MarketRotationSeconds   int      `yaml:"market_rotation_seconds"`
 	MarketFrameMilliseconds int      `yaml:"market_frame_milliseconds"`
 	SpotifyPollSeconds      int      `yaml:"spotify_poll_seconds"`
@@ -50,7 +51,7 @@ func New() *Store {
 		Scale: 100, BoxPadding: 1, ColumnGap: 1, ChartHeight: 2,
 		BorderColor: "240", TextColor: "15", DimColor: "240", ValueColor: "228",
 		AccentColor: "#1DB954", Positive: "#39d353", Negative: "#f85149",
-	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, SpotifyPollSeconds: 5, ViewportWidth: 80, ViewportHeight: 24}
+	}, WeatherCity: "São Paulo", WeatherCountry: "BR", GitHubUser: "", NewsLimit: 3, RefreshMinutes: 10, NewsRotationSeconds: 60, WeatherRotationSeconds: 30, MarketRotationSeconds: 4, MarketFrameMilliseconds: 45, SpotifyPollSeconds: 5, ViewportWidth: 80, ViewportHeight: 24}
 	configPath := defaultConfigPath()
 	if configPath != "" {
 		if contents, err := os.ReadFile(configPath); err == nil {
@@ -100,10 +101,11 @@ func (s *Store) SetRSS(feeds []string, limit int) {
 	s.mu.Unlock()
 }
 
-func (s *Store) SetIntervals(refreshMinutes, newsRotationSeconds, marketRotationSeconds, marketFrameMilliseconds, spotifyPollSeconds int) {
+func (s *Store) SetIntervals(refreshMinutes, newsRotationSeconds, weatherRotationSeconds, marketRotationSeconds, marketFrameMilliseconds, spotifyPollSeconds int) {
 	s.mu.Lock()
 	s.RefreshMinutes = refreshMinutes
 	s.NewsRotationSeconds = newsRotationSeconds
+	s.WeatherRotationSeconds = weatherRotationSeconds
 	s.MarketRotationSeconds = marketRotationSeconds
 	s.MarketFrameMilliseconds = marketFrameMilliseconds
 	s.SpotifyPollSeconds = spotifyPollSeconds
