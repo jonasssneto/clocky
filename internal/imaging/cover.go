@@ -11,8 +11,14 @@ import (
 	"time"
 )
 
+const (
+	coverRequestTimeout    = 10 * time.Second
+	coverResponseBodyLimit = 5 << 20
+	minimumCoverDimension  = 3
+)
+
 func DownloadAndRenderCover(url string, width, height int) (string, error) {
-	client := http.Client{Timeout: 10 * time.Second}
+	client := http.Client{Timeout: coverRequestTimeout}
 	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
 	if err != nil {
 		return "", err
@@ -26,7 +32,7 @@ func DownloadAndRenderCover(url string, width, height int) (string, error) {
 	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return "", fmt.Errorf("cover: HTTP status %d", response.StatusCode)
 	}
-	cover, err := jpeg.Decode(io.LimitReader(response.Body, 5<<20))
+	cover, err := jpeg.Decode(io.LimitReader(response.Body, coverResponseBodyLimit))
 	if err != nil {
 		return "", err
 	}
@@ -34,7 +40,8 @@ func DownloadAndRenderCover(url string, width, height int) (string, error) {
 }
 
 func RenderCover(cover image.Image, width, height int) string {
-	width, height = max(3, width), max(3, height)
+	width = max(minimumCoverDimension, width)
+	height = max(minimumCoverDimension, height)
 	if cover == nil {
 		innerWidth := width - 2
 		lines := []string{"┌" + strings.Repeat("─", innerWidth) + "┐"}

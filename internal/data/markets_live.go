@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+const (
+	marketRequestTimeout    = 12 * time.Second
+	marketResponseBodyLimit = 2 << 20
+	maximumMarketSymbolSize = 12
+	marketHistoryCapacity   = 3
+)
+
 type capitalQuote struct {
 	Ticker  string  `json:"ticker"`
 	Price   float64 `json:"preco"`
@@ -33,7 +40,7 @@ func FetchMarketFunds(ctx context.Context, symbols []string) ([]MarketAsset, err
 	seen := make(map[string]struct{}, len(symbols))
 	for _, symbol := range symbols {
 		symbol = strings.ToUpper(strings.TrimSpace(symbol))
-		if symbol == "" || len(symbol) > 12 {
+		if symbol == "" || len(symbol) > maximumMarketSymbolSize {
 			continue
 		}
 		if _, exists := seen[symbol]; exists {
@@ -45,43 +52,13 @@ func FetchMarketFunds(ctx context.Context, symbols []string) ([]MarketAsset, err
 	if len(clean) == 0 {
 		return nil, nil
 	}
-	client := &http.Client{Timeout: 12 * time.Second}
+	client := &http.Client{Timeout: marketRequestTimeout}
 	assets := make([]MarketAsset, 0, len(clean))
 	for _, symbol := range clean {
-		endpoint := "https://capitalagora.com.br/api/ativo/" + symbol
-		request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
-		if err != nil {
-			continue
+		asset, ok := fetchMarketAsset(ctx, client, symbol)
+		if ok {
+			assets = append(assets, asset)
 		}
-		request.Header.Set("Accept", "application/json")
-		request.Header.Set("User-Agent", "Clocky market dashboard")
-		response, err := client.Do(request)
-		if err != nil {
-			continue
-		}
-		if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
-			_ = response.Body.Close()
-			continue
-		}
-		var payload capitalQuote
-		err = json.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&payload)
-		_ = response.Body.Close()
-		if err != nil || payload.Ticker == "" {
-			continue
-		}
-		if payload.Price == 0 {
-			continue
-		}
-		yield := "—"
-		if payload.Indicators.DividendYield12M != nil {
-			yield = formatYield(*payload.Indicators.DividendYield12M)
-		} else if payload.MonthlyYield != nil {
-			yield = formatYield(*payload.MonthlyYield) + "/m"
-		}
-		assets = append(assets, MarketAsset{
-			Symbol: payload.Ticker, Price: payload.Price, Change: payload.Variations.Day,
-			DividendYield: yield, History: marketHistory(payload.Range52.Minimum, payload.Price, payload.Range52.Maximum),
-		})
 	}
 	if len(assets) == 0 {
 		return nil, errors.New("market API returned no quotes for configured symbols")
@@ -89,8 +66,40 @@ func FetchMarketFunds(ctx context.Context, symbols []string) ([]MarketAsset, err
 	return assets, nil
 }
 
+func fetchMarketAsset(ctx context.Context, client *http.Client, symbol string) (MarketAsset, bool) {
+	endpoint := "https://capitalagora.com.br/api/ativo/" + symbol
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return MarketAsset{}, false
+	}
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("User-Agent", "Clocky market dashboard")
+	response, err := client.Do(request)
+	if err != nil {
+		return MarketAsset{}, false
+	}
+	defer response.Body.Close()
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		return MarketAsset{}, false
+	}
+	var payload capitalQuote
+	if err := json.NewDecoder(io.LimitReader(response.Body, marketResponseBodyLimit)).Decode(&payload); err != nil || payload.Ticker == "" || payload.Price == 0 {
+		return MarketAsset{}, false
+	}
+	yield := "—"
+	if payload.Indicators.DividendYield12M != nil {
+		yield = formatYield(*payload.Indicators.DividendYield12M)
+	} else if payload.MonthlyYield != nil {
+		yield = formatYield(*payload.MonthlyYield) + "/m"
+	}
+	return MarketAsset{
+		Symbol: payload.Ticker, Price: payload.Price, Change: payload.Variations.Day,
+		DividendYield: yield, History: marketHistory(payload.Range52.Minimum, payload.Price, payload.Range52.Maximum),
+	}, true
+}
+
 func marketHistory(minimum, current, maximum float64) []float64 {
-	values := make([]float64, 0, 3)
+	values := make([]float64, 0, marketHistoryCapacity)
 	if minimum > 0 {
 		values = append(values, minimum)
 	}

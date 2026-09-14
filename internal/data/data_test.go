@@ -93,6 +93,43 @@ func TestMarketHelpers(t *testing.T) {
 	}
 }
 
+func TestFetchMarketAssetClosesResponseBody(t *testing.T) {
+	tests := []struct {
+		name   string
+		status int
+		body   string
+		wantOK bool
+	}{
+		{name: "valid quote", status: http.StatusOK, body: `{"ticker":"MXRF11","preco":10.31}`, wantOK: true},
+		{name: "HTTP error", status: http.StatusBadGateway, body: "bad gateway"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			body := &trackingReadCloser{Reader: strings.NewReader(test.body)}
+			client := &http.Client{Transport: roundTripFunc(func(*http.Request) (*http.Response, error) {
+				return &http.Response{StatusCode: test.status, Header: make(http.Header), Body: body}, nil
+			})}
+			_, ok := fetchMarketAsset(context.Background(), client, "MXRF11")
+			if ok != test.wantOK {
+				t.Fatalf("fetchMarketAsset success = %v, want %v", ok, test.wantOK)
+			}
+			if !body.closed {
+				t.Fatal("market response body was not closed")
+			}
+		})
+	}
+}
+
+type trackingReadCloser struct {
+	io.Reader
+	closed bool
+}
+
+func (r *trackingReadCloser) Close() error {
+	r.closed = true
+	return nil
+}
+
 func TestFetchRSSParsesSortsAndLimitsRSS(t *testing.T) {
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = roundTripFunc(func(request *http.Request) (*http.Response, error) {

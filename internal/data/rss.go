@@ -13,6 +13,11 @@ import (
 	"time"
 )
 
+const (
+	rssRequestTimeout    = 10 * time.Second
+	rssResponseBodyLimit = 2 << 20
+)
+
 type rssDocument struct {
 	Channel rssChannel  `xml:"channel"`
 	Entries []atomEntry `xml:"entry"`
@@ -52,7 +57,7 @@ func FetchRSS(ctx context.Context, feeds []string, limit int) ([]NewsItem, error
 	if len(feeds) == 0 {
 		return nil, nil
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := &http.Client{Timeout: rssRequestTimeout}
 	results := make([]rssResult, 0, len(feeds)*maxInt(limit, 1))
 	var failures int
 	for _, feedURL := range feeds {
@@ -95,11 +100,11 @@ func fetchRSSFeed(ctx context.Context, client *http.Client, feedURL string) ([]r
 		return nil, err
 	}
 	defer response.Body.Close()
-	if response.StatusCode < 200 || response.StatusCode >= 300 {
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
 		return nil, fmt.Errorf("RSS HTTP status %d", response.StatusCode)
 	}
 	var document rssDocument
-	if err := xml.NewDecoder(io.LimitReader(response.Body, 2<<20)).Decode(&document); err != nil {
+	if err := xml.NewDecoder(io.LimitReader(response.Body, rssResponseBodyLimit)).Decode(&document); err != nil {
 		return nil, err
 	}
 	results := make([]rssResult, 0)
