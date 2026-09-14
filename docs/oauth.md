@@ -15,11 +15,11 @@ Register this exact redirect URI in the Spotify developer dashboard:
 http://127.0.0.1:8888/callback
 ```
 
-Configure the server-side `.env` file:
+Open the Clocky configuration page and enter the Spotify client ID and redirect
+URI in the Spotify settings fields. The redirect URI defaults to:
 
 ```text
-SPOTIFY_CLIENT_ID=your_client_id
-SPOTIFY_REDIRECT_URI=http://127.0.0.1:8888/callback
+http://127.0.0.1:8888/callback
 ```
 
 Clocky uses Authorization Code with PKCE, so a client secret is not required.

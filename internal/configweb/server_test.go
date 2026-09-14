@@ -50,6 +50,8 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		"weather_city":          {"Curitiba"},
 		"weather_key":           {"optional-key"},
 		"github_user":           {"octocat"},
+		"spotify_client_id":     {"stored-client"},
+		"spotify_redirect_uri":  {"http://127.0.0.1:9999/callback"},
 		"rss_feeds":             {"https://example.com/feed.xml\nhttps://example.org/rss"},
 		"fii_symbols":           {"MXRF11", "VINO11", "KNCR11", "XPML11"},
 		"stock_symbols":         {"VALE3", "PETR4"},
@@ -72,6 +74,9 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 	}
 	if got := strings.Join(server.settings.Get().StockSymbols, ","); got != "VALE3,PETR4" {
 		t.Fatalf("stock symbols = %q", got)
+	}
+	if snapshot := server.settings.Get(); snapshot.SpotifyClientID != "stored-client" || snapshot.SpotifyRedirectURI != "http://127.0.0.1:9999/callback" {
+		t.Fatalf("Spotify settings = %+v", snapshot)
 	}
 }
 

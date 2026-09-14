@@ -182,6 +182,15 @@ func (s *Server) SetSettings(store *settings.Store) {
 	}
 }
 
+func (s *Server) SetIntegration(integration oauth.Integration) {
+	if integration == nil || integration.ID() == "" {
+		return
+	}
+	s.mu.Lock()
+	s.integrations[integration.ID()] = integration
+	s.mu.Unlock()
+}
+
 func (s *Server) PageURL() string {
 	return s.pageURL
 }
@@ -414,6 +423,11 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	}
 	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
 	s.settings.SetGitHub(strings.TrimSpace(request.Form.Get("github_user")))
+	redirectURI := strings.TrimSpace(request.Form.Get("spotify_redirect_uri"))
+	if redirectURI == "" {
+		redirectURI = current.SpotifyRedirectURI
+	}
+	s.settings.SetSpotify(strings.TrimSpace(request.Form.Get("spotify_client_id")), redirectURI)
 	feeds := make([]string, 0, maximumRSSFeeds)
 	for _, value := range request.Form["rss_feeds"] {
 		for _, line := range strings.Split(value, "\n") {

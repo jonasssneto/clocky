@@ -900,6 +900,10 @@
 
         <form id="settings-form" class="settings-form" method="post" action="/settings">
           <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+          <div class="group-fields spotify-settings">
+            <label class="field">Spotify client ID<span class="field-help">Create it in the Spotify developer dashboard</span><input type="password" name="spotify_client_id" value="{{.Settings.SpotifyClientID}}" autocomplete="off" placeholder="Client ID"></label>
+            <label class="field">Spotify redirect URI<span class="field-help">Register this exact URI with Spotify</span><input type="url" name="spotify_redirect_uri" value="{{.Settings.SpotifyRedirectURI}}" placeholder="http://127.0.0.1:8888/callback"></label>
+          </div>
           <section class="config-section" id="sources">
             <p class="section-kicker">02 / Content</p>
             <div class="section-heading">
