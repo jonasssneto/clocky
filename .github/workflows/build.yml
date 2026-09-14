@@ -6,6 +6,8 @@ on:
     tags: ["v*", "*.*.*"]
   pull_request:
     types: [opened, synchronize, reopened]
+  issue_comment:
+    types: [created]
   workflow_dispatch:
     inputs:
       version:
@@ -15,19 +17,31 @@ on:
 
 permissions:
   contents: read
+  issues: read
   pull-requests: read
 
 concurrency:
-  group: clocky-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: clocky-${{ github.workflow }}-${{ github.event.pull_request.number || github.event.issue.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   lint:
     name: Lint
+    if: >-
+      ${{
+        github.event_name != 'issue_comment' ||
+        (
+          github.event.issue.pull_request &&
+          github.event.comment.body == '/release-dev' &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+        )
+      }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/merge', github.event.issue.number) || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -42,10 +56,21 @@ jobs:
 
   test:
     name: Test and coverage
+    if: >-
+      ${{
+        github.event_name != 'issue_comment' ||
+        (
+          github.event.issue.pull_request &&
+          github.event.comment.body == '/release-dev' &&
+          contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+        )
+      }}
     runs-on: ubuntu-latest
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/merge', github.event.issue.number) || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -61,7 +86,7 @@ jobs:
 
   release-version:
     name: Determine release version
-    if: github.event_name != 'pull_request'
+    if: github.event_name != 'pull_request' && github.event_name != 'issue_comment'
     runs-on: ubuntu-latest
     outputs:
       create_release: ${{ steps.version.outputs.create_release }}
@@ -146,6 +171,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'issue_comment' && format('refs/pull/{0}/merge', github.event.issue.number) || github.ref }}
 
       - name: Set up Go
         uses: actions/setup-go@v6
@@ -178,6 +205,7 @@ jobs:
       ${{
         always() &&
         github.event_name != 'pull_request' &&
+        github.event_name != 'issue_comment' &&
         needs.lint.result == 'success' &&
         needs.test.result == 'success' &&
         needs.release-version.result == 'success' &&
@@ -223,8 +251,10 @@ jobs:
     needs: [lint, test, build]
     if: >-
       ${{
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository
+        github.event_name == 'issue_comment' &&
+        github.event.issue.pull_request &&
+        github.event.comment.body == '/release-dev' &&
+        contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
       }}
     runs-on: ubuntu-latest
     permissions:
@@ -235,20 +265,26 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: refs/pull/${{ github.event.issue.number }}/merge
+
+      - name: Record tested revision
+        id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Define development version
         id: version
         env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_NUMBER: ${{ github.event.issue.number }}
           RUN_NUMBER: ${{ github.run_number }}
         run: echo "tag=v0.0.0-dev.pr.${PR_NUMBER}.${RUN_NUMBER}" >> "$GITHUB_OUTPUT"
 
       - name: Create development release tag
         env:
           RELEASE_TAG: ${{ steps.version.outputs.tag }}
+          TESTED_SHA: ${{ steps.revision.outputs.sha }}
         run: |
           if ! git ls-remote --exit-code origin "refs/tags/$RELEASE_TAG" >/dev/null 2>&1; then
-            git tag "$RELEASE_TAG" "$GITHUB_SHA"
+            git tag "$RELEASE_TAG" "$TESTED_SHA"
             git push origin "$RELEASE_TAG"
           fi
 
@@ -263,7 +299,7 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           name: Clocky ${{ steps.version.outputs.tag }}
-          body: Development build for PR #${{ github.event.pull_request.number }} at commit ${{ github.event.pull_request.head.sha }}.
+          body: Development build requested with /release-dev for PR #${{ github.event.issue.number }} at tested commit ${{ steps.revision.outputs.sha }}.
           prerelease: true
           make_latest: false
           files: release-artifacts/*

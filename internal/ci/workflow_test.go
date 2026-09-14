@@ -41,6 +41,9 @@ func TestBuildWorkflowRequiresQualityGatesBeforePublishing(t *testing.T) {
 	if _, ok := config.On["pull_request"]; !ok {
 		t.Fatal("build workflow is not triggered by pull requests")
 	}
+	if _, ok := config.On["issue_comment"]; !ok {
+		t.Fatal("build workflow is not triggered by PR comments")
+	}
 	if config.Permissions["contents"] != "read" {
 		t.Fatal("workflow-wide contents permission must remain read-only")
 	}
@@ -65,7 +68,10 @@ func TestBuildWorkflowRequiresQualityGatesBeforePublishing(t *testing.T) {
 	if !sameSet(development.Needs, []string{"lint", "test", "build"}) {
 		t.Fatalf("development release dependencies = %v", development.Needs)
 	}
-	if !strings.Contains(development.If, "github.event_name == 'pull_request'") || !strings.Contains(development.If, "head.repo.full_name == github.repository") {
+	if !strings.Contains(development.If, "github.event_name == 'issue_comment'") ||
+		!strings.Contains(development.If, "github.event.comment.body == '/release-dev'") ||
+		!strings.Contains(development.If, "github.event.issue.pull_request") ||
+		!strings.Contains(development.If, "github.event.comment.author_association") {
 		t.Fatalf("development release condition is unsafe: %q", development.If)
 	}
 	if development.Permissions["contents"] != "write" {
