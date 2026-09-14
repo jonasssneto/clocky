@@ -6,6 +6,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"clocky/internal/configweb"
 	"clocky/internal/data"
+	"clocky/internal/settings"
 )
 
 type Model struct {
@@ -25,6 +26,7 @@ type Model struct {
 	cover       string
 	spotify     *data.SpotifyClient
 	configWeb   *configweb.Server
+	settings    *settings.Store
 	spotifyErr  string
 	configErr   string
 	spotifyPage string
@@ -41,6 +43,7 @@ func NewModel() Model {
 		spotifyMessage = spotifyErr.Error()
 	}
 	configurationURL := "http://127.0.0.1:8888/"
+	visualSettings := settings.New()
 	var configurationServer *configweb.Server
 	var configurationErr error
 	if spotifyClient != nil {
@@ -51,6 +54,9 @@ func NewModel() Model {
 	}
 	if configurationErr != nil {
 		spotifyMessage = configurationErr.Error()
+	}
+	if configurationServer != nil {
+		configurationServer.SetSettings(visualSettings)
 	}
 	return Model{
 		now:         time.Now(),
@@ -64,6 +70,7 @@ func NewModel() Model {
 		funds:       data.MockFunds(),
 		spotify:     spotifyClient,
 		configWeb:   configurationServer,
+		settings:    visualSettings,
 		spotifyErr:  spotifyMessage,
 		configErr:   errorMessage(configurationErr),
 		spotifyPage: configurationURL,

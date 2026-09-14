@@ -18,6 +18,13 @@
     .alert.error { border-color: #a43a46; background: #32151a; color: #ff9aa5; }
     .section-title { margin: 30px 0 12px; color: #c9d1d9; font-size: 14px; }
     .card { display: grid; grid-template-columns: 1fr auto; gap: 22px; align-items: center; padding: 22px; border: 1px solid #273142; border-radius: 16px; background: #111823; box-shadow: 0 18px 60px #0005; }
+    .settings-card { display: block; }
+    .settings-form { display: grid; gap: 14px; }
+    .settings-form label { display: grid; gap: 6px; color: #c9d1d9; font-size: 13px; font-weight: 700; }
+    .settings-form label span { color: #697586; font-size: 11px; font-weight: 400; }
+    input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid #3a4658; border-radius: 8px; background: #0d141f; color: #f0f6fc; font: inherit; }
+    .colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 5px; }
+    .viewport { margin: 0; color: #9da7b3; font-size: 13px; }
     .identity { display: flex; gap: 16px; align-items: center; min-width: 0; }
     .icon { width: 50px; height: 50px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 50%; background: #1db954; color: #071b0e; font-size: 23px; font-weight: 850; }
     h2 { margin: 0 0 5px; font-size: 20px; }
@@ -31,7 +38,7 @@
     button.primary { border-color: #1db954; background: #1db954; color: #071b0e; }
     button.danger { color: #ff9aa5; }
     footer { margin-top: 24px; color: #697586; font-size: 12px; text-align: center; }
-    @media (max-width: 600px) { .card { grid-template-columns: 1fr; } .actions { justify-content: flex-start; } }
+    @media (max-width: 600px) { .card { grid-template-columns: 1fr; } .actions { justify-content: flex-start; } .colors { grid-template-columns: 1fr; } }
   </style>
 </head>
 <body>
@@ -39,7 +46,7 @@
     <header>
       <div class="eyebrow">Remote settings</div>
       <h1>Clocky Configuration</h1>
-      <p class="subtitle">Manage account connections for this Clocky installation. Additional dashboard settings can be added here later.</p>
+      <p class="subtitle">Manage account connections and tune the terminal dashboard without restarting Clocky.</p>
     </header>
 
     {{if .Notice}}<div class="alert">{{.Notice}}</div>{{end}}
@@ -71,6 +78,28 @@
     {{else}}
     <section class="card"><p>No integrations are available.</p></section>
     {{end}}
+
+    <div class="section-title">Dashboard appearance</div>
+    <section class="card settings-card">
+      <form class="settings-form" method="post" action="/settings">
+        <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+        <p class="viewport">Current terminal: <strong>{{.Settings.ViewportWidth}} × {{.Settings.ViewportHeight}}</strong> cells</p>
+        <label>UI scale <span>50–100%</span><input type="number" name="scale" min="50" max="100" step="5" value="{{.Settings.Scale}}"></label>
+        <label>Card padding <span>0–2 cells</span><input type="number" name="box_padding" min="0" max="2" value="{{.Settings.BoxPadding}}"></label>
+        <label>Column gap <span>0–4 cells</span><input type="number" name="column_gap" min="0" max="4" value="{{.Settings.ColumnGap}}"></label>
+        <label>Chart height <span>1–4 rows</span><input type="number" name="chart_height" min="1" max="4" value="{{.Settings.ChartHeight}}"></label>
+        <div class="colors">
+          <label>Border <input type="text" name="border_color" value="{{.Settings.BorderColor}}"></label>
+          <label>Text <input type="text" name="text_color" value="{{.Settings.TextColor}}"></label>
+          <label>Muted <input type="text" name="dim_color" value="{{.Settings.DimColor}}"></label>
+          <label>Values <input type="text" name="value_color" value="{{.Settings.ValueColor}}"></label>
+          <label>Accent <input type="text" name="accent_color" value="{{.Settings.AccentColor}}"></label>
+          <label>Positive <input type="text" name="positive_color" value="{{.Settings.Positive}}"></label>
+          <label>Negative <input type="text" name="negative_color" value="{{.Settings.Negative}}"></label>
+        </div>
+        <button class="primary" type="submit">Save appearance</button>
+      </form>
+    </section>
 
     <footer>Available only through the local Clocky configuration endpoint.</footer>
   </main>

@@ -8,7 +8,7 @@ import (
 func renderTodayMarketsRow(width, height int, m Model) string {
 	compactHeight := boxStyle.GetVerticalFrameSize() + 1
 	if height >= compactHeight*2 {
-		todayHeight := min(boxStyle.GetVerticalFrameSize()+4, height-compactHeight)
+		todayHeight := min(boxStyle.GetVerticalFrameSize()+4*visualScale/100, height-compactHeight)
 		return lipgloss.JoinVertical(
 			lipgloss.Left,
 			renderTodayBox(width, todayHeight, m.now, m.overview),
@@ -33,8 +33,11 @@ func splitColumns(width, gap int) (int, int) {
 }
 
 func (m Model) View() tea.View {
+	if m.settings != nil {
+		applyVisualSettings(m.settings.Get())
+	}
 	width, height := max(1, m.width), max(1, m.height)
-	const columnGap = 1
+	columnGap := visualColumnGap
 
 	todayCol := renderTodayColumn(m.today)
 	tomorrowCol := renderTomorrowColumn(m.tomorrow)

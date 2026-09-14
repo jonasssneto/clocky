@@ -9,27 +9,27 @@ import (
 )
 
 var bigFont = map[rune][]string{
-	'0': {"███", "█ █", "█ █", "███"},
-	'1': {" █ ", "██ ", " █ ", "███"},
-	'2': {"███", "  █", " █ ", "███"},
-	'3': {"███", "  █", " ██", "███"},
-	'4': {"█ █", "█ █", "███", "  █"},
-	'5': {"███", "█  ", " ██", "███"},
-	'6': {"███", "█  ", "█ █", "███"},
-	'7': {"███", "  █", " █ ", " █ "},
-	'8': {"███", "█ █", "█ █", "███"},
-	'9': {"███", "█ █", " ██", "███"},
-	':': {" ", "·", " ", "·"},
+	'0': {"███", "█ █", "█ █", "█ █", "███"},
+	'1': {" █ ", "██ ", " █ ", " █ ", "███"},
+	'2': {"███", "  █", "███", "█  ", "███"},
+	'3': {"███", "  █", " ██", "  █", "███"},
+	'4': {"█ █", "█ █", "███", "  █", "  █"},
+	'5': {"███", "█  ", "███", "  █", "███"},
+	'6': {"███", "█  ", "███", "█ █", "███"},
+	'7': {"███", "  █", "  █", " █ ", " █ "},
+	'8': {"███", "█ █", "███", "█ █", "███"},
+	'9': {"███", "█ █", "███", "  █", "███"},
+	':': {"   ", " █ ", "   ", " █ ", "   "},
 }
 
 func bigText(text string) []string {
-	rows := make([]string, 4)
+	rows := make([]string, 5)
 	for _, character := range text {
 		glyph, ok := bigFont[character]
 		if !ok {
 			continue
 		}
-		for row := 0; row < 4; row++ {
+		for row := 0; row < 5; row++ {
 			rows[row] += glyph[row] + " "
 		}
 	}
@@ -48,7 +48,7 @@ func renderLargeClock(now time.Time) string {
 func renderClock(now time.Time, cardWidth int) string {
 	largeClock := renderLargeClock(now)
 	innerWidth := max(1, cardWidth-boxStyle.GetHorizontalFrameSize())
-	if lipgloss.Width(largeClock) <= innerWidth {
+	if visualScale >= 100 && lipgloss.Width(largeClock) <= innerWidth {
 		return largeClock
 	}
 	return lipgloss.JoinVertical(

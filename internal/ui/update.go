@@ -14,6 +14,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		if m.settings != nil {
+			m.settings.SetViewport(msg.Width, msg.Height)
+		}
 
 	case tickMsg:
 		m.now = time.Time(msg)

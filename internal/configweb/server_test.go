@@ -25,10 +25,37 @@ func TestDashboardShowsIntegrationStatus(t *testing.T) {
 		t.Fatalf("status = %d", recorder.Code)
 	}
 	body := recorder.Body.String()
-	for _, expected := range []string{"Clocky Configuration", "Spotify", "Connected", "Switch account", "Disconnect"} {
+	for _, expected := range []string{"Clocky Configuration", "Spotify", "Connected", "Switch account", "Disconnect", "Dashboard appearance", "Current terminal"} {
 		if !strings.Contains(body, expected) {
 			t.Errorf("dashboard does not contain %q", expected)
 		}
+	}
+}
+
+func TestVisualSettingsAreSaved(t *testing.T) {
+	t.Parallel()
+
+	server := testServer(t, &fakeIntegration{})
+	form := url.Values{
+		"csrf_token":     {server.csrfToken},
+		"scale":          {"80"},
+		"box_padding":    {"0"},
+		"column_gap":     {"3"},
+		"chart_height":   {"4"},
+		"border_color":   {"#ffffff"},
+		"accent_color":   {"#ff00aa"},
+		"positive_color": {"#00ff00"},
+	}
+	request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form.Encode()))
+	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusSeeOther {
+		t.Fatalf("settings status = %d", recorder.Code)
+	}
+	visual := server.settings.Get().Visual
+	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" {
+		t.Fatalf("unexpected visual settings: %+v", visual)
 	}
 }
 

@@ -13,11 +13,13 @@ import (
 	"net/http"
 	"net/url"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"clocky/internal/oauth"
+	"clocky/internal/settings"
 )
 
 //go:embed dashboard.html result.html
@@ -29,6 +31,7 @@ type Server struct {
 	csrfToken     string
 	templates     *template.Template
 	integrations  map[string]oauth.Integration
+	settings      *settings.Store
 	mu            sync.RWMutex
 	pending       map[string]pendingAuthorization
 }
@@ -44,6 +47,7 @@ type pageData struct {
 	Error        string
 	CSRFToken    string
 	Integrations []integrationView
+	Settings     settings.Snapshot
 }
 
 type integrationView struct {
@@ -87,6 +91,7 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 		return nil, fmt.Errorf("parse configuration templates: %w", err)
 	}
 	registered := make(map[string]oauth.Integration, len(integrations))
+	visualSettings := settings.New()
 	for _, integration := range integrations {
 		if integration == nil || integration.ID() == "" || integration.Name() == "" {
 			return nil, errors.New("configuration integrations require an ID and name")
@@ -105,8 +110,15 @@ func New(pageURL string, integrations ...oauth.Integration) (*Server, error) {
 		csrfToken:     csrfToken,
 		templates:     templates,
 		integrations:  registered,
+		settings:      visualSettings,
 		pending:       make(map[string]pendingAuthorization),
 	}, nil
+}
+
+func (s *Server) SetSettings(store *settings.Store) {
+	if store != nil {
+		s.settings = store
+	}
 }
 
 func (s *Server) PageURL() string {
@@ -151,6 +163,8 @@ func (s *Server) Handler() http.Handler {
 		switch {
 		case request.URL.Path == "/":
 			s.handleDashboard(writer, request)
+		case request.URL.Path == "/settings":
+			s.handleSettings(writer, request)
 		case strings.HasPrefix(request.URL.Path, "/integrations/"):
 			s.handleIntegration(writer, request)
 		default:
@@ -185,7 +199,50 @@ func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Reque
 		Error:        request.URL.Query().Get("error"),
 		CSRFToken:    s.csrfToken,
 		Integrations: integrations,
+		Settings:     s.settings.Get(),
 	})
+}
+
+func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Request) {
+	if request.Method != http.MethodPost {
+		methodNotAllowed(writer, http.MethodPost)
+		return
+	}
+	if err := request.ParseForm(); err != nil || request.Form.Get("csrf_token") != s.csrfToken {
+		s.redirectWithMessage(writer, request, "error", "This settings page expired. Reload it and try again.")
+		return
+	}
+	current := s.settings.Get().Visual
+	visual := current
+	visual.Scale = boundedFormInt(request, "scale", current.Scale, 50, 100)
+	visual.BoxPadding = boundedFormInt(request, "box_padding", current.BoxPadding, 0, 2)
+	visual.ColumnGap = boundedFormInt(request, "column_gap", current.ColumnGap, 0, 4)
+	visual.ChartHeight = boundedFormInt(request, "chart_height", current.ChartHeight, 1, 4)
+	visual.BorderColor = formColor(request, "border_color", current.BorderColor)
+	visual.TextColor = formColor(request, "text_color", current.TextColor)
+	visual.DimColor = formColor(request, "dim_color", current.DimColor)
+	visual.ValueColor = formColor(request, "value_color", current.ValueColor)
+	visual.AccentColor = formColor(request, "accent_color", current.AccentColor)
+	visual.Positive = formColor(request, "positive_color", current.Positive)
+	visual.Negative = formColor(request, "negative_color", current.Negative)
+	s.settings.SetVisual(visual)
+	s.redirectWithMessage(writer, request, "notice", "Visual settings saved.")
+}
+
+func boundedFormInt(request *http.Request, name string, fallback, minimum, maximum int) int {
+	value, err := strconv.Atoi(request.Form.Get(name))
+	if err != nil || value < minimum || value > maximum {
+		return fallback
+	}
+	return value
+}
+
+func formColor(request *http.Request, name, fallback string) string {
+	value := strings.TrimSpace(request.Form.Get(name))
+	if value == "" || len(value) > 16 || strings.ContainsAny(value, "{};\n\r") {
+		return fallback
+	}
+	return value
 }
 
 func (s *Server) handleIntegration(writer http.ResponseWriter, request *http.Request) {
