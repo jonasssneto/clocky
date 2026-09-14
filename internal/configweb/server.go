@@ -254,6 +254,7 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 		boundedFormInt(request, "weather_rotation_seconds", s.settings.Get().WeatherRotationSeconds, 10, 3600),
 		boundedFormInt(request, "market_rotation_seconds", s.settings.Get().MarketRotationSeconds, 1, 300),
 		boundedFormInt(request, "market_frame_ms", s.settings.Get().MarketFrameMilliseconds, 10, 1000),
+		boundedFormInt(request, "marquee_ms", s.settings.Get().MarqueeMilliseconds, 80, 1000),
 		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),
 	)
 	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")

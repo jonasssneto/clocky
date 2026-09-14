@@ -120,6 +120,7 @@ Preserve these behaviors unless a request explicitly changes them:
 - Read available dimensions from `tea.WindowSizeMsg` and store them on the model.
 - Use `lipgloss.Width()` and `lipgloss.Height()` for rendered content. Do not use byte length to measure terminal width.
 - Use ANSI-aware truncation for styled strings. Text that exceeds its available width must end with `…`.
+- Long text that exceeds its available width should use the shared marquee helper and its configurable global speed; keep charts, graphs, and other visual plots static and fit them to the available width.
 - Include borders and padding when calculating card dimensions through `boxStyle.GetHorizontalFrameSize()` and `boxStyle.GetVerticalFrameSize()`.
 - Allocate widths from the current terminal width. Do not hard-code a complete dashboard width.
 - Keep horizontal siblings within the exact available width, including separators and gaps.

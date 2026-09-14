@@ -107,5 +107,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), marqueeAfter(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), weatherAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

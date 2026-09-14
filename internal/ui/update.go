@@ -46,8 +46,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			} else {
 				m.funds = msg.funds
 			}
-			m.marketPage, m.marketNext, m.marketStep = 0, 0, 0
-			m.marketSlide = false
 		}
 
 	case tickMsg:
@@ -72,7 +70,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if funds := m.settings.Get(); !sameStrings(funds.FiiSymbols, m.fundSymbols) || !sameStrings(funds.StockSymbols, m.stockSymbols) {
 				m.fundSymbols = append([]string(nil), funds.FiiSymbols...)
 				m.stockSymbols = append([]string(nil), funds.StockSymbols...)
-				return m, tea.Batch(tickEvery(), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true))
+				m.marketPage, m.marketNext, m.marketStep = 0, 0, 0
+				m.marketSlide = false
+				return m, tea.Batch(tickEvery(), rotateMarketAfter(), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true))
 			}
 		}
 		return m, tickEvery()
@@ -118,6 +118,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if pageCount <= 1 {
 			return m, rotateMarketAfter()
 		}
+		if m.marketSlide {
+			return m, marketFrameAfter()
+		}
 		if !m.marketSlide {
 			m.marketNext = (m.marketPage + 1) % pageCount
 			m.marketStep = 0
@@ -136,6 +139,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, marketFrameAfter()
 		}
+		return m, rotateMarketAfter()
 
 	case todayNewsMsg:
 		m.todayNewsPage = !m.todayNewsPage
@@ -144,6 +148,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case weatherRotateMsg:
 		m.weatherTomorrow = !m.weatherTomorrow
 		return m, weatherAfter()
+
+	case marqueeMsg:
+		advanceMarquee()
+		return m, marqueeAfter()
 
 	case coverLoadedMsg:
 		if msg.err == nil && msg.url == m.track.CoverURL {

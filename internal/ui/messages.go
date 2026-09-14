@@ -19,6 +19,7 @@ type marketRotateMsg time.Time
 type marketFrameMsg time.Time
 type todayNewsMsg time.Time
 type weatherRotateMsg time.Time
+type marqueeMsg time.Time
 type weatherMsg struct {
 	today    data.Weather
 	tomorrow data.Forecast
@@ -56,6 +57,7 @@ const (
 	marketPageInterval  = 4 * time.Second
 	todayNewsInterval   = 60 * time.Second
 	weatherInterval     = 30 * time.Second
+	marqueeInterval     = 240 * time.Millisecond
 	marketFrameDelay    = 45 * time.Millisecond
 	marketSlideSteps    = 8
 	spotifyPollInterval = 5 * time.Second
@@ -114,6 +116,14 @@ func weatherAfter() tea.Cmd {
 		delay = time.Duration(value) * time.Second
 	}
 	return tea.Tick(delay, func(t time.Time) tea.Msg { return weatherRotateMsg(t) })
+}
+
+func marqueeAfter() tea.Cmd {
+	delay := marqueeInterval
+	if value := configuredIntervals().MarqueeMilliseconds; value > 0 {
+		delay = time.Duration(value) * time.Millisecond
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return marqueeMsg(t) })
 }
 
 func fetchWeather(city, country, key string) tea.Cmd {

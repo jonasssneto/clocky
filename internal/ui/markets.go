@@ -15,6 +15,11 @@ func formatBrazilianReal(price float64) string {
 }
 
 func fitLine(text string, width int) string {
+	line := fitMarquee(text, width)
+	return line + strings.Repeat(" ", max(0, width-lipgloss.Width(line)))
+}
+
+func fitStaticLine(text string, width int) string {
 	line := ansi.Truncate(text, width, "…")
 	return line + strings.Repeat(" ", max(0, width-lipgloss.Width(line)))
 }
@@ -128,8 +133,9 @@ func renderMarketRange(asset data.MarketAsset, width int) []string {
 	} else if asset.Change < 0 {
 		trendStyle = negative
 	}
-	currentLine := value.Render("Now "+strings.TrimPrefix(formatBrazilianReal(current), "R$ ")) + " " + trendStyle.Render(fmt.Sprintf("%+.2f%% day", asset.Change))
-	return []string{fitLine(rangeLine, width), fitLine(currentLine, width)}
+	currentLine := value.Render("Now " + strings.TrimPrefix(formatBrazilianReal(current), "R$ "))
+	trendLine := trendStyle.Render(fmt.Sprintf("%+.2f%% day", asset.Change))
+	return []string{fitStaticLine(rangeLine, width), fitStaticLine(currentLine+" "+trendLine, width)}
 }
 
 func renderMarketColumn(width, height int, title string, selected bool, assets []data.MarketAsset, page int) []string {
@@ -179,7 +185,11 @@ func renderMarketColumn(width, height int, title string, selected bool, assets [
 		lines = append(lines, "")
 	}
 	for index, line := range lines {
-		lines[index] = fitLine(line, width)
+		if index >= 3 {
+			lines[index] = fitStaticLine(line, width)
+		} else {
+			lines[index] = fitLine(line, width)
+		}
 	}
 	return lines
 }
@@ -201,7 +211,7 @@ func renderMarketPanel(width, height, page int, stocks, funds []data.MarketAsset
 	rightLines := renderMarketColumn(rightWidth, height, "Stocks", page == 1, stocks, page)
 	lines := make([]string, height)
 	for index := range lines {
-		lines[index] = fitLine(leftLines[index], leftWidth) + dim.Render("│") + fitLine(rightLines[index], rightWidth)
+		lines[index] = fitStaticLine(leftLines[index], leftWidth) + dim.Render("│") + fitStaticLine(rightLines[index], rightWidth)
 	}
 	return lines
 }
@@ -222,7 +232,7 @@ func renderMarketsBox(width, height, page, next, step int, sliding bool, stocks,
 	visible := make([]string, innerHeight)
 	for index := range visible {
 		track := currentLines[index] + " " + nextLines[index]
-		visible[index] = fitLine(ansi.Cut(track, offset, offset+innerWidth), innerWidth)
+		visible[index] = fitStaticLine(ansi.Cut(track, offset, offset+innerWidth), innerWidth)
 	}
 	return boxStyle.Width(width).Height(height).Render(strings.Join(visible, "\n"))
 }

@@ -7,7 +7,6 @@ import (
 	"charm.land/lipgloss/v2"
 	"clocky/internal/data"
 	"clocky/internal/imaging"
-	"github.com/charmbracelet/x/ansi"
 )
 
 const (
@@ -45,7 +44,7 @@ func renderPlaybackLine(artist string, width int, playing bool) string {
 	if width <= iconWidth {
 		return spotify.Render(icon)
 	}
-	artist = ansi.Truncate(strings.TrimSpace(artist), width-iconWidth-1, "…")
+	artist = truncateLine(artist, width-iconWidth-1)
 	spacing := max(1, width-lipgloss.Width(artist)-iconWidth)
 	return dim.Render(artist) + strings.Repeat(" ", spacing) + spotify.Render(icon)
 }
@@ -80,7 +79,7 @@ func renderSpotifyBox(width, height int, track data.Track, cover, status, loginU
 			timeLabel = elapsed + "/" + duration
 		}
 		info := strings.Join([]string{
-			clockStyle.MaxWidth(infoWidth).Render(track.Title),
+			clockStyle.Render(truncateLine(track.Title, infoWidth)),
 			renderPlaybackLine(track.Artist, infoWidth, track.Playing),
 			renderProgressBar(infoWidth, track.ElapsedSec, track.TotalSec),
 			dim.Render(timeLabel),
@@ -88,7 +87,7 @@ func renderSpotifyBox(width, height int, track data.Track, cover, status, loginU
 		content = lipgloss.JoinHorizontal(lipgloss.Top, cover, "  ", info)
 	} else {
 		content = strings.Join([]string{
-			clockStyle.MaxWidth(innerWidth).Render(track.Title),
+			clockStyle.Render(truncateLine(track.Title, innerWidth)),
 			renderPlaybackLine(track.Artist, innerWidth, track.Playing),
 			renderProgressBar(innerWidth, track.ElapsedSec, track.TotalSec),
 			dim.Render(elapsed + "/" + duration),
