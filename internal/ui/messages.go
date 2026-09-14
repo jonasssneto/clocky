@@ -61,6 +61,7 @@ type updateFinishedMsg struct {
 	version string
 	err     error
 }
+type updateRestartMsg struct{ err error }
 
 const (
 	refreshInterval     = 10 * time.Minute
@@ -247,4 +248,8 @@ func runUpdate(request configweb.UpdateRequest, events chan<- tea.Msg) tea.Cmd {
 		}()
 		return nil
 	}
+}
+
+func restartAfterUpdate() tea.Cmd {
+	return func() tea.Msg { return updateRestartMsg{err: updater.RestartCurrentProcess()} }
 }

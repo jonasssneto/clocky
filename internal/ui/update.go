@@ -139,12 +139,20 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.update.Downloading = false
 			if msg.err != nil {
 				m.update.Status = "Update failed: " + msg.err.Error()
-			} else {
-				m.update.Status = "Update installed. Restart Clocky to apply it."
+				m.updateEvents = nil
+				return m, waitUpdateRequest(m.configWeb.UpdateRequests())
 			}
+			m.update.Status = "Restarting Clocky…"
 		}
 		m.updateEvents = nil
-		return m, waitUpdateRequest(m.configWeb.UpdateRequests())
+		return m, restartAfterUpdate()
+
+	case updateRestartMsg:
+		if msg.err != nil && m.update != nil {
+			m.update.Status = "Update installed, but restart failed: " + msg.err.Error()
+			return m, waitUpdateRequest(m.configWeb.UpdateRequests())
+		}
+		return m, tea.Quit
 
 	case marketRotateMsg:
 		pageCount := max(len(m.stocks), len(m.funds))

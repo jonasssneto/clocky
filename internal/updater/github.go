@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -19,6 +20,8 @@ const (
 	releaseRequestTimeout = 10 * time.Second
 	assetDownloadTimeout  = 10 * time.Minute
 )
+
+var startProcess = func(command *exec.Cmd) error { return command.Start() }
 
 type Release struct {
 	TagName     string  `json:"tag_name"`
@@ -126,6 +129,21 @@ func DownloadAndInstall(ctx context.Context, asset Asset, report func(Progress))
 	}
 	if err := os.Rename(temporaryPath, executable); err != nil {
 		return fmt.Errorf("install Clocky update: %w", err)
+	}
+	return nil
+}
+
+func RestartCurrentProcess() error {
+	executable, err := os.Executable()
+	if err != nil {
+		return fmt.Errorf("locate Clocky executable: %w", err)
+	}
+	command := exec.CommandContext(context.Background(), executable, os.Args[1:]...) //nolint:gosec // executable is the current Clocky binary.
+	command.Stdin = os.Stdin
+	command.Stdout = os.Stdout
+	command.Stderr = os.Stderr
+	if err := startProcess(command); err != nil {
+		return fmt.Errorf("restart Clocky: %w", err)
 	}
 	return nil
 }

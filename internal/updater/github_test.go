@@ -3,8 +3,10 @@ package updater
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"net/http"
+	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -28,6 +30,15 @@ func TestCopyAssetReportsProgress(t *testing.T) {
 	}
 }
 
+func TestCopyAssetReportsWriteError(t *testing.T) {
+	response := updaterResponse(http.StatusOK, "data")
+	response.Body = io.NopCloser(errorReader{})
+	defer response.Body.Close()
+	if err := copyAsset(response, io.Discard, nil); err == nil {
+		t.Fatal("copy unexpectedly succeeded")
+	}
+}
+
 func TestDownloadAndInstallRejectsHTTPError(t *testing.T) {
 	originalTransport := http.DefaultTransport
 	http.DefaultTransport = updaterRoundTripFunc(func(*http.Request) (*http.Response, error) {
@@ -39,6 +50,35 @@ func TestDownloadAndInstallRejectsHTTPError(t *testing.T) {
 	}
 	if err := DownloadAndInstall(context.Background(), Asset{URL: "://invalid"}, nil); err == nil {
 		t.Fatal("invalid URL unexpectedly succeeded")
+	}
+	http.DefaultTransport = updaterRoundTripFunc(func(*http.Request) (*http.Response, error) { return nil, errors.New("network down") })
+	if err := DownloadAndInstall(context.Background(), Asset{URL: "https://example.test/update"}, nil); err == nil {
+		t.Fatal("network error unexpectedly succeeded")
+	}
+}
+
+func TestRestartCurrentProcessStartsSameExecutable(t *testing.T) {
+	originalStart := startProcess
+	var started *exec.Cmd
+	startProcess = func(command *exec.Cmd) error {
+		started = command
+		return nil
+	}
+	t.Cleanup(func() { startProcess = originalStart })
+	if err := RestartCurrentProcess(); err != nil {
+		t.Fatal(err)
+	}
+	if started == nil || started.Path == "" {
+		t.Fatalf("restart command = %#v", started)
+	}
+}
+
+func TestRestartCurrentProcessReportsStartError(t *testing.T) {
+	originalStart := startProcess
+	startProcess = func(*exec.Cmd) error { return errors.New("start failed") }
+	t.Cleanup(func() { startProcess = originalStart })
+	if err := RestartCurrentProcess(); err == nil {
+		t.Fatal("restart unexpectedly succeeded")
 	}
 }
 
@@ -98,6 +138,10 @@ func TestAssetForCurrentPlatform(t *testing.T) {
 }
 
 type updaterRoundTripFunc func(*http.Request) (*http.Response, error)
+
+type errorReader struct{}
+
+func (errorReader) Read([]byte) (int, error) { return 0, errors.New("read failed") }
 
 func (function updaterRoundTripFunc) RoundTrip(request *http.Request) (*http.Response, error) {
 	return function(request)

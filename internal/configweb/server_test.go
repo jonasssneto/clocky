@@ -78,6 +78,12 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 func TestUpdateRequestRequiresCSRFAndEmitsVersion(t *testing.T) {
 	t.Parallel()
 	server := testServer(t, &fakeIntegration{})
+	get := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/update", nil)
+	getRecorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(getRecorder, get)
+	if getRecorder.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("GET update status = %d", getRecorder.Code)
+	}
 	invalid := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/api/update", strings.NewReader("version=v1"))
 	invalid.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	invalidRecorder := httptest.NewRecorder()
