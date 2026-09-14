@@ -23,6 +23,7 @@
     .settings-form label { display: grid; gap: 6px; color: #c9d1d9; font-size: 13px; font-weight: 700; }
     .settings-form label span { color: #697586; font-size: 11px; font-weight: 400; }
     input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid #3a4658; border-radius: 8px; background: #0d141f; color: #f0f6fc; font: inherit; }
+    textarea { width: 100%; padding: 11px; border: 1px solid #3a4658; border-radius: 8px; background: #0d141f; color: #f0f6fc; font: inherit; resize: vertical; }
     .colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 5px; }
     .viewport { margin: 0; color: #9da7b3; font-size: 13px; }
     .identity { display: flex; gap: 16px; align-items: center; min-width: 0; }
@@ -88,6 +89,14 @@
         <label>Holiday country <span>ISO 3166-1 code, for example BR</span><input type="text" name="weather_country" maxlength="2" value="{{.Settings.WeatherCountry}}"></label>
         <label>Weather API key <span>Optional; Open-Meteo works without one</span><input type="password" name="weather_key" value="{{.Settings.WeatherKey}}" autocomplete="off"></label>
         <label>GitHub profile <span>Username, for example octocat</span><input type="text" name="github_user" value="{{.Settings.GitHubUser}}" placeholder="octocat"></label>
+        <label>RSS feeds <span>One HTTP(S) feed URL per line</span><textarea name="rss_feeds" rows="4" placeholder="https://example.com/feed.xml">{{range .Settings.RSSFeeds}}{{.}}
+{{end}}</textarea></label>
+        <label>News limit <span>Maximum one item per feed</span><input type="number" name="news_limit" min="1" max="20" value="{{.Settings.NewsLimit}}"></label>
+        <label>Data refresh (minutes) <span>Weather, news and GitHub</span><input type="number" name="refresh_minutes" min="1" max="120" value="{{.Settings.RefreshMinutes}}"></label>
+        <label>Today/News rotation (seconds) <span>Automatic card alternation</span><input type="number" name="news_rotation_seconds" min="10" max="3600" value="{{.Settings.NewsRotationSeconds}}"></label>
+        <label>Market rotation (seconds) <span>Funds and Stocks pages</span><input type="number" name="market_rotation_seconds" min="1" max="300" value="{{.Settings.MarketRotationSeconds}}"></label>
+        <label>Market slide speed (milliseconds) <span>Animation frame delay</span><input type="number" name="market_frame_ms" min="10" max="1000" value="{{.Settings.MarketFrameMilliseconds}}"></label>
+        <label>Spotify refresh (seconds) <span>Current track polling</span><input type="number" name="spotify_poll_seconds" min="2" max="300" value="{{.Settings.SpotifyPollSeconds}}"></label>
         <label>UI scale <span>50–100%</span><input type="number" name="scale" min="50" max="100" step="5" value="{{.Settings.Scale}}"></label>
         <label>Card padding <span>0–2 cells</span><input type="number" name="box_padding" min="0" max="2" value="{{.Settings.BoxPadding}}"></label>
         <label>Column gap <span>0–4 cells</span><input type="number" name="column_gap" min="0" max="4" value="{{.Settings.ColumnGap}}"></label>

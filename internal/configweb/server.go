@@ -236,6 +236,22 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	}
 	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
 	s.settings.SetGitHub(strings.TrimSpace(request.Form.Get("github_user")))
+	feeds := make([]string, 0, 12)
+	for _, line := range strings.Split(request.Form.Get("rss_feeds"), "\n") {
+		line = strings.TrimSpace(line)
+		if line != "" && (strings.HasPrefix(line, "https://") || strings.HasPrefix(line, "http://")) && len(feeds) < 12 {
+			feeds = append(feeds, line)
+		}
+	}
+	limit := boundedFormInt(request, "news_limit", s.settings.Get().NewsLimit, 1, 20)
+	s.settings.SetRSS(feeds, limit)
+	s.settings.SetIntervals(
+		boundedFormInt(request, "refresh_minutes", s.settings.Get().RefreshMinutes, 1, 120),
+		boundedFormInt(request, "news_rotation_seconds", s.settings.Get().NewsRotationSeconds, 10, 3600),
+		boundedFormInt(request, "market_rotation_seconds", s.settings.Get().MarketRotationSeconds, 1, 300),
+		boundedFormInt(request, "market_frame_ms", s.settings.Get().MarketFrameMilliseconds, 10, 1000),
+		boundedFormInt(request, "spotify_poll_seconds", s.settings.Get().SpotifyPollSeconds, 2, 300),
+	)
 	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")
 }
 

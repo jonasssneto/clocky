@@ -8,7 +8,7 @@ import (
 	"clocky/internal/data"
 )
 
-func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsItem) string {
+func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsItem, limit int) string {
 	if height < boxStyle.GetVerticalFrameSize()+1 {
 		return ""
 	}
@@ -18,7 +18,7 @@ func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsIte
 	header := truncateLine("News · updated at "+lastRefresh.Format("15:04"), innerWidth)
 	lines := []string{dim.Render(header)}
 	for index, item := range news {
-		if index >= 3 || len(lines)+1 > maxLines {
+		if index >= limit || len(lines)+1 > maxLines {
 			break
 		}
 		prefix := "▸ "
@@ -28,8 +28,56 @@ func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsIte
 			source = ""
 			titleWidth = innerWidth - lipgloss.Width(prefix)
 		}
-		title := truncateLine(item.Title, titleWidth)
-		lines = append(lines, prefix+title+dim.Render(source))
+		wrapped := wrapNewsTitle(item.Title, titleWidth)
+		for lineIndex, title := range wrapped {
+			if len(lines) >= maxLines {
+				break
+			}
+			line := title
+			if lineIndex == 0 {
+				line = prefix + line
+			}
+			if lineIndex == len(wrapped)-1 {
+				line += dim.Render(source)
+			}
+			lines = append(lines, line)
+		}
 	}
 	return style.Height(height).Render(strings.Join(lines, "\n"))
+}
+
+func wrapNewsTitle(title string, width int) []string {
+	width = max(1, width)
+	words := strings.Fields(title)
+	if len(words) == 0 {
+		return []string{""}
+	}
+	lines := make([]string, 0, len(words))
+	current := ""
+	for _, word := range words {
+		for len([]rune(word)) > width {
+			if current != "" {
+				lines = append(lines, current)
+				current = ""
+			}
+			wordRunes := []rune(word)
+			lines = append(lines, string(wordRunes[:width]))
+			word = string(wordRunes[width:])
+		}
+		if word == "" {
+			continue
+		}
+		if current == "" {
+			current = word
+		} else if len(current)+1+len(word) <= width {
+			current += " " + word
+		} else {
+			lines = append(lines, current)
+			current = word
+		}
+	}
+	if current != "" {
+		lines = append(lines, current)
+	}
+	return lines
 }

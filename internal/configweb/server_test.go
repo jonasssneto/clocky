@@ -37,17 +37,20 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 
 	server := testServer(t, &fakeIntegration{})
 	form := url.Values{
-		"csrf_token":     {server.csrfToken},
-		"scale":          {"80"},
-		"box_padding":    {"0"},
-		"column_gap":     {"3"},
-		"chart_height":   {"4"},
-		"border_color":   {"#ffffff"},
-		"accent_color":   {"#ff00aa"},
-		"positive_color": {"#00ff00"},
-		"weather_city":   {"Curitiba"},
-		"weather_key":    {"optional-key"},
-		"github_user":    {"octocat"},
+		"csrf_token":            {server.csrfToken},
+		"scale":                 {"80"},
+		"box_padding":           {"0"},
+		"column_gap":            {"3"},
+		"chart_height":          {"4"},
+		"border_color":          {"#ffffff"},
+		"accent_color":          {"#ff00aa"},
+		"positive_color":        {"#00ff00"},
+		"weather_city":          {"Curitiba"},
+		"weather_key":           {"optional-key"},
+		"github_user":           {"octocat"},
+		"rss_feeds":             {"https://example.com/feed.xml\nhttps://example.org/rss"},
+		"news_limit":            {"5"},
+		"news_rotation_seconds": {"90"},
 	}
 	request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -57,7 +60,7 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		t.Fatalf("settings status = %d", recorder.Code)
 	}
 	visual := server.settings.Get().Visual
-	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" || server.settings.Get().GitHubUser != "octocat" {
+	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" || server.settings.Get().GitHubUser != "octocat" || server.settings.Get().NewsLimit != 5 || server.settings.Get().NewsRotationSeconds != 90 {
 		t.Fatalf("unexpected visual settings: %+v", visual)
 	}
 }

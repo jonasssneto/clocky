@@ -8,6 +8,7 @@ import (
 	"clocky/internal/configweb"
 	"clocky/internal/data"
 	"clocky/internal/imaging"
+	"clocky/internal/settings"
 
 	tea "charm.land/bubbletea/v2"
 )
@@ -27,6 +28,10 @@ type githubMsg struct {
 	days  []data.ContributionDay
 	total int
 	err   error
+}
+type rssMsg struct {
+	news []data.NewsItem
+	err  error
 }
 type coverLoadedMsg struct {
 	url   string
@@ -49,24 +54,51 @@ const (
 	spotifyPollInterval = 5 * time.Second
 )
 
+var intervalStore *settings.Store
+
+func configureIntervals(store *settings.Store) { intervalStore = store }
+
+func configuredIntervals() settings.Snapshot {
+	if intervalStore != nil {
+		return intervalStore.Get()
+	}
+	return settings.New().Get()
+}
+
 func tickEvery() tea.Cmd {
 	return tea.Tick(time.Second, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
 func refreshEvery() tea.Cmd {
-	return tea.Tick(refreshInterval, func(t time.Time) tea.Msg { return refreshMsg(t) })
+	delay := refreshInterval
+	if value := configuredIntervals().RefreshMinutes; value > 0 {
+		delay = time.Duration(value) * time.Minute
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return refreshMsg(t) })
 }
 
 func rotateMarketAfter() tea.Cmd {
-	return tea.Tick(marketPageInterval, func(t time.Time) tea.Msg { return marketRotateMsg(t) })
+	delay := marketPageInterval
+	if value := configuredIntervals().MarketRotationSeconds; value > 0 {
+		delay = time.Duration(value) * time.Second
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return marketRotateMsg(t) })
 }
 
 func marketFrameAfter() tea.Cmd {
-	return tea.Tick(marketFrameDelay, func(t time.Time) tea.Msg { return marketFrameMsg(t) })
+	delay := marketFrameDelay
+	if value := configuredIntervals().MarketFrameMilliseconds; value > 0 {
+		delay = time.Duration(value) * time.Millisecond
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return marketFrameMsg(t) })
 }
 
 func todayNewsAfter() tea.Cmd {
-	return tea.Tick(todayNewsInterval, func(t time.Time) tea.Msg { return todayNewsMsg(t) })
+	delay := todayNewsInterval
+	if value := configuredIntervals().NewsRotationSeconds; value > 0 {
+		delay = time.Duration(value) * time.Second
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return todayNewsMsg(t) })
 }
 
 func fetchWeather(city, country, key string) tea.Cmd {
@@ -87,8 +119,21 @@ func fetchGitHub(username string) tea.Cmd {
 	}
 }
 
+func fetchRSS(feeds []string, limit int) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		news, err := data.FetchRSS(ctx, feeds, limit)
+		return rssMsg{news: news, err: err}
+	}
+}
+
 func pollSpotifyAfter() tea.Cmd {
-	return tea.Tick(spotifyPollInterval, func(t time.Time) tea.Msg { return spotifyPollMsg(t) })
+	delay := spotifyPollInterval
+	if value := configuredIntervals().SpotifyPollSeconds; value > 0 {
+		delay = time.Duration(value) * time.Second
+	}
+	return tea.Tick(delay, func(t time.Time) tea.Msg { return spotifyPollMsg(t) })
 }
 
 func fetchSpotifyTrack(client *data.SpotifyClient) tea.Cmd {

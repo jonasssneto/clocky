@@ -14,6 +14,8 @@ type Model struct {
 	today          data.Weather
 	tomorrow       data.Forecast
 	news           []data.NewsItem
+	rssFeeds       []string
+	newsLimit      int
 	github         []data.ContributionDay
 	githubTotal    int
 	track          data.Track
@@ -64,6 +66,7 @@ func NewModel() Model {
 	if configurationServer != nil {
 		configurationServer.SetSettings(visualSettings)
 	}
+	configureIntervals(visualSettings)
 	return Model{
 		now:            time.Now(),
 		today:          today,
@@ -82,6 +85,8 @@ func NewModel() Model {
 		weatherKey:     visualSettings.Get().WeatherKey,
 		githubUser:     visualSettings.Get().GitHubUser,
 		githubTotal:    991,
+		rssFeeds:       append([]string(nil), visualSettings.Get().RSSFeeds...),
+		newsLimit:      visualSettings.Get().NewsLimit,
 		spotifyErr:     spotifyMessage,
 		configErr:      errorMessage(configurationErr),
 		spotifyPage:    configurationURL,
@@ -99,5 +104,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

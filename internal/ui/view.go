@@ -34,7 +34,7 @@ func splitColumns(width, gap int) (int, int) {
 
 func renderTodayNewsBox(width, height int, m Model) string {
 	if m.todayNewsPage {
-		return renderNewsBox(width, height, m.lastRefresh, m.news)
+		return renderNewsBox(width, height, m.lastRefresh, m.news, m.newsLimit)
 	}
 	return renderTodayBox(width, height, m.now, m.overview)
 }
