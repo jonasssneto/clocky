@@ -23,24 +23,28 @@ func renderNewsBox(width, height int, lastRefresh time.Time, news []data.NewsIte
 		}
 		prefix := "▸ "
 		source := " — " + item.Source
-		titleWidth := innerWidth - lipgloss.Width(prefix) - lipgloss.Width(source)
-		if titleWidth < 8 {
-			source = ""
-			titleWidth = innerWidth - lipgloss.Width(prefix)
-		}
+		titleWidth := innerWidth - lipgloss.Width(prefix)
 		wrapped := wrapNewsTitle(item.Title, titleWidth)
 		for lineIndex, title := range wrapped {
 			if len(lines) >= maxLines {
 				break
 			}
 			line := title
+			sourceLine := ""
 			if lineIndex == 0 {
 				line = prefix + line
 			}
 			if lineIndex == len(wrapped)-1 {
-				line += dim.Render(source)
+				if lipgloss.Width(line)+lipgloss.Width(source) <= innerWidth {
+					line += dim.Render(source)
+				} else if len(lines)+1 < maxLines {
+					sourceLine = dim.Render(truncateLine(strings.TrimSpace(source), innerWidth))
+				}
 			}
 			lines = append(lines, line)
+			if sourceLine != "" && len(lines) < maxLines {
+				lines = append(lines, sourceLine)
+			}
 		}
 	}
 	return style.Height(height).Render(strings.Join(lines, "\n"))
