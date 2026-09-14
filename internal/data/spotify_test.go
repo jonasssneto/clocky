@@ -12,7 +12,20 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"clocky/internal/settings"
 )
+
+func TestNewSpotifyClientUsesStoredSettings(t *testing.T) {
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	client, err := NewSpotifyClient(settings.Snapshot{SpotifyClientID: "stored-client", SpotifyRedirectURI: "http://127.0.0.1:9999/callback"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if client.config.clientID != "stored-client" || client.config.redirectURI != "http://127.0.0.1:9999/callback" {
+		t.Fatalf("Spotify config = %+v", client.config)
+	}
+}
 
 func TestValidateSpotifyRedirect(t *testing.T) {
 	t.Parallel()

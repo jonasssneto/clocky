@@ -40,6 +40,8 @@ type Model struct {
 	weatherKey      string
 	githubUser      string
 	spotifyErr      string
+	spotifyClientID string
+	spotifyRedirect string
 	configErr       string
 	spotifyPage     string
 	update          *updateProgress
@@ -51,14 +53,14 @@ type Model struct {
 
 func NewModel() Model {
 	today, tomorrow, news, github := data.FetchAll()
-	spotifyClient, spotifyErr := data.NewSpotifyClient()
+	visualSettings := settings.New()
+	snapshot := visualSettings.Get()
+	spotifyClient, spotifyErr := data.NewSpotifyClient(snapshot)
 	spotifyMessage := ""
 	if spotifyErr != nil {
 		spotifyMessage = spotifyErr.Error()
 	}
 	configurationURL := "http://127.0.0.1:8888/"
-	visualSettings := settings.New()
-	snapshot := visualSettings.Get()
 	var configurationServer *configweb.Server
 	var configurationErr error
 	if spotifyClient != nil {
@@ -74,31 +76,33 @@ func NewModel() Model {
 		configurationServer.SetSettings(visualSettings)
 	}
 	return Model{
-		now:            time.Now(),
-		today:          today,
-		tomorrow:       tomorrow,
-		news:           news,
-		github:         github,
-		track:          data.Track{},
-		overview:       data.MockTodayOverview(),
-		fundSymbols:    append([]string(nil), snapshot.FiiSymbols...),
-		stockSymbols:   append([]string(nil), snapshot.StockSymbols...),
-		spotify:        spotifyClient,
-		configWeb:      configurationServer,
-		settings:       visualSettings,
-		weatherCity:    snapshot.WeatherCity,
-		weatherCountry: snapshot.WeatherCountry,
-		weatherKey:     snapshot.WeatherKey,
-		githubUser:     snapshot.GitHubUser,
-		githubTotal:    991,
-		rssFeeds:       append([]string(nil), snapshot.RSSFeeds...),
-		newsLimit:      snapshot.NewsLimit,
-		spotifyErr:     spotifyMessage,
-		configErr:      errorMessage(configurationErr),
-		spotifyPage:    configurationURL,
-		lastRefresh:    time.Now(),
-		width:          80,
-		height:         24,
+		now:             time.Now(),
+		today:           today,
+		tomorrow:        tomorrow,
+		news:            news,
+		github:          github,
+		track:           data.Track{},
+		overview:        data.MockTodayOverview(),
+		fundSymbols:     append([]string(nil), snapshot.FiiSymbols...),
+		stockSymbols:    append([]string(nil), snapshot.StockSymbols...),
+		spotify:         spotifyClient,
+		configWeb:       configurationServer,
+		settings:        visualSettings,
+		weatherCity:     snapshot.WeatherCity,
+		weatherCountry:  snapshot.WeatherCountry,
+		weatherKey:      snapshot.WeatherKey,
+		githubUser:      snapshot.GitHubUser,
+		githubTotal:     991,
+		rssFeeds:        append([]string(nil), snapshot.RSSFeeds...),
+		newsLimit:       snapshot.NewsLimit,
+		spotifyErr:      spotifyMessage,
+		spotifyClientID: snapshot.SpotifyClientID,
+		spotifyRedirect: snapshot.SpotifyRedirectURI,
+		configErr:       errorMessage(configurationErr),
+		spotifyPage:     configurationURL,
+		lastRefresh:     time.Now(),
+		width:           80,
+		height:          24,
 	}
 }
 

@@ -55,8 +55,23 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.track.Playing && m.track.ElapsedSec < m.track.TotalSec {
 			m.track.ElapsedSec++
 		}
-		if m.settings != nil {
+		if m.settings != nil { //nolint:nestif // settings changes intentionally share one tick transition.
 			snapshot := m.settings.Get()
+			if snapshot.SpotifyClientID != m.spotifyClientID || (m.spotifyClientID != "" && snapshot.SpotifyRedirectURI != m.spotifyRedirect) {
+				m.spotifyClientID, m.spotifyRedirect = snapshot.SpotifyClientID, snapshot.SpotifyRedirectURI
+				client, err := data.NewSpotifyClient(snapshot)
+				if err != nil {
+					m.spotify = nil
+					m.spotifyErr = err.Error()
+					return m, tea.Batch(tickEvery(), pollSpotifyAfter(m.settings))
+				}
+				m.spotify = client
+				m.spotifyErr = ""
+				if m.configWeb != nil {
+					m.configWeb.SetIntegration(client)
+				}
+				return m, tea.Batch(tickEvery(), fetchSpotifyTrack(m.spotify))
+			}
 			if snapshot.WeatherCity != m.weatherCity || snapshot.WeatherCountry != m.weatherCountry || snapshot.WeatherKey != m.weatherKey {
 				m.weatherCity, m.weatherCountry, m.weatherKey = snapshot.WeatherCity, snapshot.WeatherCountry, snapshot.WeatherKey
 				return m, tea.Batch(tickEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey))

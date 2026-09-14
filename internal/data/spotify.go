@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"clocky/internal/oauth"
+	"clocky/internal/settings"
 )
 
 const (
@@ -74,16 +75,10 @@ type SpotifyClient struct {
 
 var _ oauth.Integration = (*SpotifyClient)(nil)
 
-func NewSpotifyClient() (*SpotifyClient, error) {
-	values, err := readEnvFile(envFilePath())
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("read Spotify environment: %w", err)
-	}
-
+func NewSpotifyClient(snapshot settings.Snapshot) (*SpotifyClient, error) {
 	config := spotifyConfig{
-		clientID:    envValue("SPOTIFY_CLIENT_ID", values),
-		redirectURI: envValue("SPOTIFY_REDIRECT_URI", values),
-		tokenFile:   envValue("SPOTIFY_TOKEN_FILE", values),
+		clientID:    strings.TrimSpace(snapshot.SpotifyClientID),
+		redirectURI: strings.TrimSpace(snapshot.SpotifyRedirectURI),
 	}
 	if config.clientID == "" {
 		return nil, errors.New("SPOTIFY_CLIENT_ID is required")
@@ -91,11 +86,10 @@ func NewSpotifyClient() (*SpotifyClient, error) {
 	if config.redirectURI == "" {
 		config.redirectURI = "http://127.0.0.1:8888/callback"
 	}
-	if config.tokenFile == "" {
-		config.tokenFile, err = defaultSpotifyTokenFile()
-		if err != nil {
-			return nil, err
-		}
+	var err error
+	config.tokenFile, err = defaultSpotifyTokenFile()
+	if err != nil {
+		return nil, err
 	}
 	if err := validateSpotifyRedirect(config.redirectURI); err != nil {
 		return nil, err
@@ -119,44 +113,6 @@ func defaultSpotifyTokenFile() (string, error) {
 		return "", fmt.Errorf("find user config directory: %w", err)
 	}
 	return filepath.Join(configDirectory, "clocky", "spotify-token.json"), nil
-}
-
-func envFilePath() string {
-	if path := strings.TrimSpace(os.Getenv("CLOCKY_ENV_FILE")); path != "" {
-		return path
-	}
-	return ".env"
-}
-
-func envValue(key string, fileValues map[string]string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return strings.TrimSpace(value)
-	}
-	return strings.TrimSpace(fileValues[key])
-}
-
-func readEnvFile(path string) (map[string]string, error) {
-	contents, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	values := make(map[string]string)
-	for line := range strings.SplitSeq(string(contents), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		key, value, ok := strings.Cut(line, "=")
-		if !ok {
-			continue
-		}
-		key = strings.TrimSpace(strings.TrimPrefix(key, "export "))
-		value = strings.Trim(strings.TrimSpace(value), "\"'")
-		if key != "" {
-			values[key] = value
-		}
-	}
-	return values, nil
 }
 
 func validateSpotifyRedirect(rawURL string) error {

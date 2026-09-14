@@ -23,6 +23,7 @@ const (
 	defaultSpotifyPollSeconds      = 5
 	defaultViewportWidth           = 80
 	defaultViewportHeight          = 24
+	defaultSpotifyRedirectURI      = "http://127.0.0.1:8888/callback"
 	configurationDirectory         = "clocky"
 	configurationFilename          = "config.yaml"
 )
@@ -62,6 +63,8 @@ type Snapshot struct {
 	SpotifyPollSeconds      int      `yaml:"spotify_poll_seconds"`
 	UpdatesEnabled          bool     `yaml:"updates_enabled"`
 	UpdateVersion           string   `yaml:"update_version"`
+	SpotifyClientID         string   `yaml:"spotify_client_id"`
+	SpotifyRedirectURI      string   `yaml:"spotify_redirect_uri"`
 	ViewportWidth           int      `yaml:"viewport_width"`
 	ViewportHeight          int      `yaml:"viewport_height"`
 }
@@ -116,6 +119,7 @@ func defaultSnapshot() Snapshot {
 		MarqueeMilliseconds:     defaultMarqueeMilliseconds,
 		SpotifyPollSeconds:      defaultSpotifyPollSeconds,
 		UpdateVersion:           "latest",
+		SpotifyRedirectURI:      defaultSpotifyRedirectURI,
 		ViewportWidth:           defaultViewportWidth,
 		ViewportHeight:          defaultViewportHeight,
 	}
@@ -197,6 +201,17 @@ func (s *Store) SetUpdates(enabled bool, version string) {
 		version = "latest"
 	}
 	s.UpdateVersion = version
+	s.saveLocked()
+	s.mu.Unlock()
+}
+
+func (s *Store) SetSpotify(clientID, redirectURI string) {
+	s.mu.Lock()
+	s.SpotifyClientID = clientID
+	if redirectURI == "" {
+		redirectURI = defaultSpotifyRedirectURI
+	}
+	s.SpotifyRedirectURI = redirectURI
 	s.saveLocked()
 	s.mu.Unlock()
 }
