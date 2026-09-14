@@ -22,6 +22,11 @@ jobs:
       create_release: ${{ steps.version.outputs.create_release }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
+      - name: Check out tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Calculate version
         id: version
         env:
@@ -37,14 +42,30 @@ jobs:
           elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
             tag="$INPUT_VERSION"
             if [ -z "$tag" ]; then
-              tag="v0.0.$RUN_NUMBER"
+              latest="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
+              if [[ "$latest" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+                major="${BASH_REMATCH[1]}"
+                minor="${BASH_REMATCH[2]}"
+                patch="${BASH_REMATCH[3]}"
+                tag="v${major}.${minor}.$((patch + 1))"
+              else
+                tag="v0.0.$RUN_NUMBER"
+              fi
             elif [[ "$tag" != v* ]]; then
               tag="v$tag"
             fi
             create_release=true
           else
-            tag=""
-            create_release=false
+            latest="$(git tag --list 'v*' --sort=-version:refname | head -n 1)"
+            if [[ "$latest" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              major="${BASH_REMATCH[1]}"
+              minor="${BASH_REMATCH[2]}"
+              patch="${BASH_REMATCH[3]}"
+              tag="v${major}.${minor}.$((patch + 1))"
+            else
+              tag="v0.0.$RUN_NUMBER"
+            fi
+            create_release=true
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "create_release=$create_release" >> "$GITHUB_OUTPUT"
