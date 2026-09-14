@@ -212,7 +212,6 @@ func TestUpdateHandlesDataAnimationAndErrors(t *testing.T) { //nolint:gocyclo //
 
 func TestModelIntegrationRendersResponsiveDashboard(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
-	t.Setenv("CLOCKY_ENV_FILE", t.TempDir()+"/missing.env")
 	model := NewModel()
 	if model.Init() == nil || model.width != 80 || model.height != 24 || model.configWeb == nil {
 		t.Fatal("new model is not initialized for the first render")
