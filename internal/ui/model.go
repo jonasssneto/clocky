@@ -10,29 +10,30 @@ import (
 )
 
 type Model struct {
-	now         time.Time
-	today       data.Weather
-	tomorrow    data.Forecast
-	news        []data.NewsItem
-	github      []data.ContributionDay
-	track       data.Track
-	overview    data.TodayOverview
-	stocks      []data.MarketAsset
-	funds       []data.MarketAsset
-	marketPage  int
-	marketNext  int
-	marketStep  int
-	marketSlide bool
-	cover       string
-	spotify     *data.SpotifyClient
-	configWeb   *configweb.Server
-	settings    *settings.Store
-	spotifyErr  string
-	configErr   string
-	spotifyPage string
-	lastRefresh time.Time
-	width       int
-	height      int
+	now           time.Time
+	today         data.Weather
+	tomorrow      data.Forecast
+	news          []data.NewsItem
+	github        []data.ContributionDay
+	track         data.Track
+	overview      data.TodayOverview
+	stocks        []data.MarketAsset
+	funds         []data.MarketAsset
+	marketPage    int
+	marketNext    int
+	marketStep    int
+	marketSlide   bool
+	todayNewsPage bool
+	cover         string
+	spotify       *data.SpotifyClient
+	configWeb     *configweb.Server
+	settings      *settings.Store
+	spotifyErr    string
+	configErr     string
+	spotifyPage   string
+	lastRefresh   time.Time
+	width         int
+	height        int
 }
 
 func NewModel() Model {
@@ -88,5 +89,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

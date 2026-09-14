@@ -81,6 +81,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, marketFrameAfter()
 		}
 
+	case todayNewsMsg:
+		m.todayNewsPage = !m.todayNewsPage
+		return m, todayNewsAfter()
+
 	case coverLoadedMsg:
 		if msg.err == nil && msg.url == m.track.CoverURL {
 			m.cover = msg.cover

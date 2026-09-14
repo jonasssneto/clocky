@@ -16,6 +16,7 @@ type tickMsg time.Time
 type refreshMsg time.Time
 type marketRotateMsg time.Time
 type marketFrameMsg time.Time
+type todayNewsMsg time.Time
 type coverLoadedMsg struct {
 	url   string
 	cover string
@@ -31,6 +32,7 @@ type configurationServerMsg struct{ err error }
 const (
 	refreshInterval     = 10 * time.Minute
 	marketPageInterval  = 4 * time.Second
+	todayNewsInterval   = 60 * time.Second
 	marketFrameDelay    = 45 * time.Millisecond
 	marketSlideSteps    = 8
 	spotifyPollInterval = 5 * time.Second
@@ -50,6 +52,10 @@ func rotateMarketAfter() tea.Cmd {
 
 func marketFrameAfter() tea.Cmd {
 	return tea.Tick(marketFrameDelay, func(t time.Time) tea.Msg { return marketFrameMsg(t) })
+}
+
+func todayNewsAfter() tea.Cmd {
+	return tea.Tick(todayNewsInterval, func(t time.Time) tea.Msg { return todayNewsMsg(t) })
 }
 
 func pollSpotifyAfter() tea.Cmd {

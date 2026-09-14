@@ -32,6 +32,13 @@ func splitColumns(width, gap int) (int, int) {
 	return leftWidth, availableWidth - leftWidth
 }
 
+func renderTodayNewsBox(width, height int, m Model) string {
+	if m.todayNewsPage {
+		return renderNewsBox(width, height, m.lastRefresh, m.news)
+	}
+	return renderTodayBox(width, height, m.now, m.overview)
+}
+
 func (m Model) View() tea.View {
 	if m.settings != nil {
 		applyVisualSettings(m.settings.Get())
@@ -78,36 +85,36 @@ func (m Model) View() tea.View {
 	bottomHeight := height - lipgloss.Height(top)
 	baseMediaHeight := boxStyle.GetVerticalFrameSize() + spotifyCoverHeight
 	if twoColumns && bottomHeight >= baseMediaHeight*2 {
-		newsHeight := baseMediaHeight
+		switchHeight := baseMediaHeight
 		mediaHeight := baseMediaHeight
-		githubHeight := bottomHeight - newsHeight
-		todayMarketsHeight := bottomHeight - mediaHeight
+		githubHeight := bottomHeight - switchHeight
+		marketsHeight := bottomHeight - mediaHeight
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderTodayMarketsRow(leftWidth, todayMarketsHeight, m),
+			renderMarketsBox(leftWidth, marketsHeight, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
 			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderNewsBox(rightWidth, newsHeight, m.lastRefresh, m.news),
+			renderTodayNewsBox(rightWidth, switchHeight, m),
 			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github),
 		)
 		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
 		full = lipgloss.JoinVertical(lipgloss.Left, top, bottom)
 	} else if !twoColumns && width >= 30 && bottomHeight >= baseMediaHeight*2 {
 		leftWidth, rightWidth = splitColumns(width, columnGap)
-		newsHeight := baseMediaHeight
+		switchHeight := baseMediaHeight
 		mediaHeight := baseMediaHeight
-		githubHeight := bottomHeight - newsHeight
-		todayMarketsHeight := bottomHeight - mediaHeight
+		githubHeight := bottomHeight - switchHeight
+		marketsHeight := bottomHeight - mediaHeight
 		leftColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderTodayMarketsRow(leftWidth, todayMarketsHeight, m),
+			renderMarketsBox(leftWidth, marketsHeight, m.marketPage, m.marketNext, m.marketStep, m.marketSlide, m.stocks, m.funds),
 			renderSpotifyBox(leftWidth, mediaHeight, m.track, m.cover, m.spotifyStatus(), m.spotifyPage),
 		)
 		rightColumn := lipgloss.JoinVertical(
 			lipgloss.Left,
-			renderNewsBox(rightWidth, newsHeight, m.lastRefresh, m.news),
+			renderTodayNewsBox(rightWidth, switchHeight, m),
 			renderGithubBox(rightWidth, githubHeight, m.lastRefresh, m.github),
 		)
 		bottom := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, " ", rightColumn)
