@@ -30,11 +30,15 @@ func renderTodayColumn(weather data.Weather, title string) string {
 func renderTomorrowColumn(forecast data.Forecast, title string) string {
 	var rendered strings.Builder
 	fmt.Fprintln(&rendered, dim.Render(title))
+	rain := fmt.Sprintf("Rain: %d%%", forecast.RainProbability)
+	if forecast.RainTime != "" {
+		rain += " at " + forecast.RainTime
+	}
 	lines := []string{
 		forecast.Condition,
 		fmt.Sprintf("High: %s", value.Render(fmt.Sprintf("%d°C", forecast.TempHigh))),
 		fmt.Sprintf("Low: %s", value.Render(fmt.Sprintf("%d°C", forecast.TempLow))),
-		"",
+		rain,
 	}
 	for index, icon := range forecast.Icon {
 		info := ""
