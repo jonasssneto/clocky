@@ -235,6 +235,7 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 		country = s.settings.Get().WeatherCountry
 	}
 	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
+	s.settings.SetGitHub(strings.TrimSpace(request.Form.Get("github_user")))
 	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")
 }
 

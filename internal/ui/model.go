@@ -15,6 +15,7 @@ type Model struct {
 	tomorrow       data.Forecast
 	news           []data.NewsItem
 	github         []data.ContributionDay
+	githubTotal    int
 	track          data.Track
 	overview       data.TodayOverview
 	stocks         []data.MarketAsset
@@ -31,6 +32,7 @@ type Model struct {
 	weatherCity    string
 	weatherCountry string
 	weatherKey     string
+	githubUser     string
 	spotifyErr     string
 	configErr      string
 	spotifyPage    string
@@ -78,6 +80,8 @@ func NewModel() Model {
 		weatherCity:    visualSettings.Get().WeatherCity,
 		weatherCountry: visualSettings.Get().WeatherCountry,
 		weatherKey:     visualSettings.Get().WeatherKey,
+		githubUser:     visualSettings.Get().GitHubUser,
+		githubTotal:    991,
 		spotifyErr:     spotifyMessage,
 		configErr:      errorMessage(configurationErr),
 		spotifyPage:    configurationURL,
@@ -95,5 +99,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

@@ -8,9 +8,9 @@ import (
 	"clocky/internal/data"
 )
 
-func renderTodayColumn(weather data.Weather) string {
+func renderTodayColumn(weather data.Weather, title string) string {
 	var rendered strings.Builder
-	fmt.Fprintln(&rendered, dim.Render("Today"))
+	fmt.Fprintln(&rendered, dim.Render(title))
 	lines := []string{
 		fmt.Sprintf("%s  %s", weather.Condition, value.Render(fmt.Sprintf("%d°C", weather.TempC))),
 		fmt.Sprintf("Feels like: %s", value.Render(fmt.Sprintf("%d°C", weather.FeelsLike))),
@@ -46,22 +46,30 @@ func renderTomorrowColumn(forecast data.Forecast) string {
 	return strings.TrimRight(rendered.String(), "\n")
 }
 
-func renderCompactWeather(weather data.Weather, cardWidth int) string {
+func renderCompactWeather(weather data.Weather, cardWidth int, city string) string {
 	innerWidth := max(1, cardWidth-boxStyle.GetHorizontalFrameSize())
-	lines := strings.Split(renderTodayColumn(weather), "\n")
+	lines := strings.Split(renderTodayColumn(weather, weatherTitle(city)), "\n")
 	for index, line := range lines {
 		lines[index] = truncateLine(line, innerWidth)
 	}
 	return strings.Join(lines, "\n")
 }
 
-func renderWeather(weather data.Weather, forecast data.Forecast, cardWidth int) string {
-	today := renderTodayColumn(weather)
+func renderWeather(weather data.Weather, forecast data.Forecast, cardWidth int, city string) string {
+	today := renderTodayColumn(weather, weatherTitle(city))
 	tomorrow := renderTomorrowColumn(forecast)
 	innerWidth := max(1, cardWidth-boxStyle.GetHorizontalFrameSize())
 	horizontal := lipgloss.JoinHorizontal(lipgloss.Top, today, dim.Render("  │  "), tomorrow)
 	if lipgloss.Width(horizontal) <= innerWidth {
 		return horizontal
 	}
-	return renderCompactWeather(weather, cardWidth)
+	return renderCompactWeather(weather, cardWidth, city)
+}
+
+func weatherTitle(city string) string {
+	city = strings.TrimSpace(city)
+	if city == "" {
+		city = "São Paulo"
+	}
+	return "Weather · " + city
 }

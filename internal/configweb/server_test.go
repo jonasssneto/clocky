@@ -47,6 +47,7 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		"positive_color": {"#00ff00"},
 		"weather_city":   {"Curitiba"},
 		"weather_key":    {"optional-key"},
+		"github_user":    {"octocat"},
 	}
 	request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -56,7 +57,7 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		t.Fatalf("settings status = %d", recorder.Code)
 	}
 	visual := server.settings.Get().Visual
-	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" {
+	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" || server.settings.Get().GitHubUser != "octocat" {
 		t.Fatalf("unexpected visual settings: %+v", visual)
 	}
 }

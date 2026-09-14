@@ -2,20 +2,24 @@ package data
 
 // Weather represents the current conditions.
 type Weather struct {
-	Condition string
-	Icon      []string
-	TempC     int
-	FeelsLike int
-	Wind      string
-	Humidity  int
+	Condition       string
+	Icon            []string
+	TempC           int
+	FeelsLike       int
+	Wind            string
+	Humidity        int
+	RainProbability int
+	RainTime        string
 }
 
 // Forecast represents the summarized conditions for a future day.
 type Forecast struct {
-	Condition string
-	Icon      []string
-	TempHigh  int
-	TempLow   int
+	Condition       string
+	Icon            []string
+	TempHigh        int
+	TempLow         int
+	RainProbability int
+	RainTime        string
 }
 
 func MockToday() Weather {

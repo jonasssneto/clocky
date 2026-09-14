@@ -9,14 +9,14 @@ import (
 	"clocky/internal/data"
 )
 
-func renderGithubBox(width, height int, lastRefresh time.Time, days []data.ContributionDay) string {
+func renderGithubBox(width, height int, lastRefresh time.Time, days []data.ContributionDay, yearlyTotal int) string {
 	if height < boxStyle.GetVerticalFrameSize()+1 {
 		return ""
 	}
 	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
 	innerHeight := max(1, height-boxStyle.GetVerticalFrameSize())
-	if len(days) >= 30*7 && innerWidth >= 30 && innerHeight >= 8 {
-		return renderMonthlyGithub(width, height, lastRefresh, days)
+	if len(days) >= 30 && innerWidth >= 32 && innerHeight >= 4 {
+		return renderMonthlyGithub(width, height, lastRefresh, days, yearlyTotal)
 	}
 	displayDays := days
 	if len(displayDays) > 7 {
@@ -45,7 +45,10 @@ func renderGithubBox(width, height int, lastRefresh time.Time, days []data.Contr
 		header = "Git " + lastRefresh.Format("15:04")
 	}
 
-	summary := fmt.Sprintf("contributions last year 991 · last week %d", total)
+	if yearlyTotal == 0 {
+		yearlyTotal = 991
+	}
+	summary := fmt.Sprintf("contributions last year %d · last week %d", yearlyTotal, total)
 	var lines []string
 	if innerWidth >= max(lipgloss.Width(labels.String()), lipgloss.Width(summary)) {
 		lines = []string{
@@ -69,20 +72,42 @@ func renderGithubBox(width, height int, lastRefresh time.Time, days []data.Contr
 	return boxStyle.Width(width).Height(height).Render(strings.Join(lines, "\n"))
 }
 
-func renderMonthlyGithub(width, height int, lastRefresh time.Time, days []data.ContributionDay) string {
+func renderMonthlyGithub(width, height int, lastRefresh time.Time, days []data.ContributionDay, yearlyTotal int) string {
 	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
 	innerHeight := max(1, height-boxStyle.GetVerticalFrameSize())
-	lines := []string{dim.Render(truncateLine("GitHub · "+lastRefresh.Format("15:04")+" · year 991 · month 30 days", innerWidth))}
-	for row := 0; row < 7 && len(lines) < innerHeight; row++ {
-		var line strings.Builder
-		for column := 0; column < 30; column++ {
-			day := days[column*7+row]
-			line.WriteString(heatLevels[min(day.Level, len(heatLevels)-1)].Render("■"))
+	if yearlyTotal == 0 {
+		yearlyTotal = 991
+	}
+	lines := []string{dim.Render(truncateLine(fmt.Sprintf("GitHub · %s · year %d · last 30 days", lastRefresh.Format("15:04"), yearlyTotal), innerWidth))}
+	lastMonth := days[len(days)-30:]
+	var grid, labels strings.Builder
+	for index, day := range lastMonth {
+		if index > 0 && index%10 == 0 {
+			grid.WriteByte(' ')
 		}
-		lines = append(lines, lipgloss.PlaceHorizontal(innerWidth, lipgloss.Center, line.String()))
+		grid.WriteString(heatLevels[min(day.Level, len(heatLevels)-1)].Render("■"))
+		if index == 0 || index == 9 || index == 19 || index == 29 {
+			if labels.Len() > 0 {
+				labels.WriteString("        ")
+			}
+			labels.WriteString(dayLabel(day.Label))
+		}
+	}
+	if len(lines) < innerHeight {
+		lines = append(lines, lipgloss.PlaceHorizontal(innerWidth, lipgloss.Center, labels.String()))
+	}
+	if len(lines) < innerHeight {
+		lines = append(lines, lipgloss.PlaceHorizontal(innerWidth, lipgloss.Center, grid.String()))
 	}
 	if len(lines) < innerHeight {
 		lines = append(lines, dim.Render("less ")+heatLevels[0].Render("■")+" "+heatLevels[2].Render("■")+" "+heatLevels[4].Render("■")+dim.Render(" more"))
 	}
 	return boxStyle.Width(width).Height(height).Render(strings.Join(lines, "\n"))
+}
+
+func dayLabel(date string) string {
+	if len(date) >= 2 {
+		return date[len(date)-2:]
+	}
+	return date
 }

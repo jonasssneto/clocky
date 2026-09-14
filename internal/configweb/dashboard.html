@@ -87,6 +87,7 @@
         <label>Weather city <span>Open-Meteo geocoding</span><input type="text" name="weather_city" value="{{.Settings.WeatherCity}}" placeholder="São Paulo"></label>
         <label>Holiday country <span>ISO 3166-1 code, for example BR</span><input type="text" name="weather_country" maxlength="2" value="{{.Settings.WeatherCountry}}"></label>
         <label>Weather API key <span>Optional; Open-Meteo works without one</span><input type="password" name="weather_key" value="{{.Settings.WeatherKey}}" autocomplete="off"></label>
+        <label>GitHub profile <span>Username, for example octocat</span><input type="text" name="github_user" value="{{.Settings.GitHubUser}}" placeholder="octocat"></label>
         <label>UI scale <span>50–100%</span><input type="number" name="scale" min="50" max="100" step="5" value="{{.Settings.Scale}}"></label>
         <label>Card padding <span>0–2 cells</span><input type="number" name="box_padding" min="0" max="2" value="{{.Settings.BoxPadding}}"></label>
         <label>Column gap <span>0–4 cells</span><input type="number" name="column_gap" min="0" max="4" value="{{.Settings.ColumnGap}}"></label>

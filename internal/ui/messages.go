@@ -23,6 +23,11 @@ type weatherMsg struct {
 	overview data.TodayOverview
 	err      error
 }
+type githubMsg struct {
+	days  []data.ContributionDay
+	total int
+	err   error
+}
 type coverLoadedMsg struct {
 	url   string
 	cover string
@@ -70,6 +75,15 @@ func fetchWeather(city, country, key string) tea.Cmd {
 		defer cancel()
 		today, tomorrow, overview, err := data.FetchLiveWeather(ctx, city, country, key)
 		return weatherMsg{today: today, tomorrow: tomorrow, overview: overview, err: err}
+	}
+}
+
+func fetchGitHub(username string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		days, total, err := data.FetchGitHubContributions(ctx, username)
+		return githubMsg{days: days, total: total, err: err}
 	}
 }
 

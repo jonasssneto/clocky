@@ -66,11 +66,21 @@ func renderTodayBox(width, height int, now time.Time, overview data.TodayOvervie
 		lines = append(lines, holiday)
 	} else {
 		lines = append(lines, renderDaylight(innerWidth, now, overview))
-		if maxLines >= 4 {
+		if maxLines >= 3 {
+			lines = append(lines, fmt.Sprintf("Min %d°C · Max %d°C", overview.TempLow, overview.TempHigh))
+		}
+		if maxLines >= 5 {
 			lines = append(lines, fmt.Sprintf("UV index  %s · %s", value.Render(fmt.Sprintf("%d", overview.UVIndex)), overview.UVLevel))
 		}
+		if maxLines >= 6 && overview.RainProbability > 0 {
+			rain := fmt.Sprintf("Rain      %d%%", overview.RainProbability)
+			if overview.RainTime != "" {
+				rain += " at " + overview.RainTime
+			}
+			lines = append(lines, rain)
+		}
 		lines = append(lines, holiday)
-		if maxLines >= 5 {
+		if maxLines >= 7 {
 			lines = append(lines, "Air       "+positive.Render(overview.AirQuality))
 		}
 	}

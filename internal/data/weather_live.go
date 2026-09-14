@@ -40,6 +40,11 @@ type forecastResponse struct {
 		Sunrise     []string  `json:"sunrise"`
 		Sunset      []string  `json:"sunset"`
 	} `json:"daily"`
+	Hourly struct {
+		Time                     []string  `json:"time"`
+		PrecipitationProbability []int     `json:"precipitation_probability"`
+		Precipitation            []float64 `json:"precipitation"`
+	} `json:"hourly"`
 }
 
 type airQualityResponse struct {
@@ -66,6 +71,7 @@ func FetchLiveWeather(ctx context.Context, city, country, apiKey string) (Weathe
 		"longitude":     {strconv.FormatFloat(location.Longitude, 'f', 4, 64)},
 		"current":       {"temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,wind_direction_10m,weather_code"},
 		"daily":         {"weather_code,temperature_2m_max,temperature_2m_min,uv_index_max,sunrise,sunset"},
+		"hourly":        {"precipitation_probability,precipitation"},
 		"forecast_days": {"2"},
 		"timezone":      {"auto"},
 	}
@@ -98,6 +104,10 @@ func FetchLiveWeather(ctx context.Context, city, country, apiKey string) (Weathe
 	overview := TodayOverview{
 		Sunrise: formatClock(forecast.Daily.Sunrise), Sunset: formatClock(forecast.Daily.Sunset),
 		UVIndex: uv, UVLevel: uvLabel(uv), AirQuality: airQuality, UpdatedAt: time.Now(),
+		RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 0),
+		RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 0),
+		TempHigh:        int(forecast.Daily.TempMax[0] + 0.5),
+		TempLow:         int(forecast.Daily.TempMin[0] + 0.5),
 	}
 	if holiday, err := fetchNextHoliday(ctx, client, country, time.Now()); err == nil {
 		overview.Holiday, overview.HolidayDate, overview.DaysUntil = holiday.Name, holiday.DateLabel, holiday.DaysUntil
@@ -105,12 +115,48 @@ func FetchLiveWeather(ctx context.Context, city, country, apiKey string) (Weathe
 	return Weather{
 			Condition: weatherCondition, Icon: weatherIcon,
 			TempC: int(forecast.Current.Temperature + 0.5), FeelsLike: int(forecast.Current.FeelsLike + 0.5),
-			Wind:     windArrow(forecast.Current.WindDirection) + " " + strconv.Itoa(int(forecast.Current.WindSpeed+0.5)) + " km/h",
-			Humidity: int(forecast.Current.Humidity + 0.5),
+			Wind:            windArrow(forecast.Current.WindDirection) + " " + strconv.Itoa(int(forecast.Current.WindSpeed+0.5)) + " km/h",
+			Humidity:        int(forecast.Current.Humidity + 0.5),
+			RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 0),
+			RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 0),
 		}, Forecast{
 			Condition: tomorrowCondition, Icon: tomorrowIcon,
 			TempHigh: int(forecast.Daily.TempMax[1] + 0.5), TempLow: int(forecast.Daily.TempMin[1] + 0.5),
+			RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 24),
+			RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 24),
 		}, overview, nil
+}
+
+func rainProbability(probabilities []int, dayOffset int) int {
+	if dayOffset >= len(probabilities) {
+		return 0
+	}
+	end := min(dayOffset+24, len(probabilities))
+	maximum := 0
+	for _, probability := range probabilities[dayOffset:end] {
+		maximum = max(maximum, probability)
+	}
+	return maximum
+}
+
+func rainTime(times []string, probabilities []int, precipitation []float64, dayOffset int) string {
+	if dayOffset >= len(probabilities) {
+		return ""
+	}
+	end := min(dayOffset+24, len(probabilities))
+	bestIndex, bestProbability := -1, 0
+	for index := dayOffset; index < end; index++ {
+		if probabilities[index] > bestProbability && (index >= len(precipitation) || precipitation[index] > 0) {
+			bestIndex, bestProbability = index, probabilities[index]
+		}
+	}
+	if bestIndex < 0 || bestIndex >= len(times) {
+		return ""
+	}
+	if len(times[bestIndex]) >= 16 {
+		return times[bestIndex][11:16]
+	}
+	return times[bestIndex]
 }
 
 type holidaySummary struct {

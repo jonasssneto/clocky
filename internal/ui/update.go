@@ -28,6 +28,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.today, m.tomorrow, m.overview = msg.today, msg.tomorrow, msg.overview
 		}
 
+	case githubMsg:
+		if msg.err == nil {
+			m.github, m.githubTotal = msg.days, msg.total
+		}
+
 	case tickMsg:
 		m.now = time.Time(msg)
 		if m.track.Playing && m.track.ElapsedSec < m.track.TotalSec {
@@ -39,13 +44,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.weatherCity, m.weatherCountry, m.weatherKey = weather.WeatherCity, weather.WeatherCountry, weather.WeatherKey
 				return m, tea.Batch(tickEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey))
 			}
+			if github := m.settings.Get(); github.GitHubUser != m.githubUser {
+				m.githubUser = github.GitHubUser
+				return m, tea.Batch(tickEvery(), fetchGitHub(m.githubUser))
+			}
 		}
 		return m, tickEvery()
 
 	case refreshMsg:
 		_, _, m.news, m.github = data.FetchAll()
 		m.lastRefresh = time.Time(msg)
-		return m, tea.Batch(refreshEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey))
+		return m, tea.Batch(refreshEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser))
 
 	case spotifyPollMsg:
 		return m, fetchSpotifyTrack(m.spotify)
