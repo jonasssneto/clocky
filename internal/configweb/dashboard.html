@@ -22,6 +22,9 @@
     .settings-form { display: grid; gap: 14px; }
     .settings-form label { display: grid; gap: 6px; color: #c9d1d9; font-size: 13px; font-weight: 700; }
     .settings-form label span { color: #697586; font-size: 11px; font-weight: 400; }
+    .location-controls { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: end; }
+    .location-controls button { min-height: 38px; white-space: nowrap; }
+    .location-status { grid-column: 1 / -1; min-height: 16px; color: #8b949e; font-size: 11px; font-weight: 400; }
     input { width: 100%; min-height: 38px; padding: 0 11px; border: 1px solid #3a4658; border-radius: 8px; background: #0d141f; color: #f0f6fc; font: inherit; }
     textarea { width: 100%; padding: 11px; border: 1px solid #3a4658; border-radius: 8px; background: #0d141f; color: #f0f6fc; font: inherit; resize: vertical; }
     .colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 5px; }
@@ -85,7 +88,11 @@
       <form class="settings-form" method="post" action="/settings">
         <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
         <p class="viewport">Current terminal: <strong>{{.Settings.ViewportWidth}} × {{.Settings.ViewportHeight}}</strong> cells</p>
-        <label>Weather city <span>Open-Meteo geocoding</span><input type="text" name="weather_city" value="{{.Settings.WeatherCity}}" placeholder="São Paulo"></label>
+        <div class="location-controls">
+          <label>Weather city <span>Open-Meteo geocoding</span><input id="weather-city" type="text" name="weather_city" value="{{.Settings.WeatherCity}}" placeholder="São Paulo"></label>
+          <button id="use-location" type="button">Use current location</button>
+          <div id="location-status" class="location-status" role="status"></div>
+        </div>
         <label>Holiday country <span>ISO 3166-1 code, for example BR</span><input type="text" name="weather_country" maxlength="2" value="{{.Settings.WeatherCountry}}"></label>
         <label>Weather API key <span>Optional; Open-Meteo works without one</span><input type="password" name="weather_key" value="{{.Settings.WeatherKey}}" autocomplete="off"></label>
         <label>GitHub profile <span>Username, for example octocat</span><input type="text" name="github_user" value="{{.Settings.GitHubUser}}" placeholder="octocat"></label>
@@ -117,6 +124,52 @@
 
     <footer>Available only through the local Clocky configuration endpoint.</footer>
   </main>
+  <script>
+    (() => {
+      const button = document.getElementById('use-location');
+      const city = document.getElementById('weather-city');
+      const country = document.querySelector('input[name="weather_country"]');
+      const status = document.getElementById('location-status');
+      if (!button || !city || !country || !status) return;
+
+      city.addEventListener('input', () => {
+        latitude.value = '';
+        longitude.value = '';
+      });
+
+      button.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          status.textContent = 'Location is not available in this browser.';
+          return;
+        }
+        button.disabled = true;
+        status.textContent = 'Getting your location…';
+        navigator.geolocation.getCurrentPosition(async (position) => {
+          try {
+            const { latitude: currentLatitude, longitude: currentLongitude } = position.coords;
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=10&lat=${encodeURIComponent(currentLatitude)}&lon=${encodeURIComponent(currentLongitude)}`, {
+              headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) throw new Error('reverse geocoding failed');
+            const result = await response.json();
+            const address = result.address || {};
+            const name = address.city || address.town || address.village || address.municipality || address.county;
+            if (!name) throw new Error('city not found');
+            city.value = name;
+            if (address.country_code) country.value = address.country_code.toUpperCase();
+            status.textContent = `Location selected: ${name}`;
+          } catch (error) {
+            status.textContent = 'Could not determine the city from your location.';
+          } finally {
+            button.disabled = false;
+          }
+        }, (error) => {
+          button.disabled = false;
+          status.textContent = error.code === error.PERMISSION_DENIED ? 'Location permission was denied.' : 'Could not read your location.';
+        }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
+      });
+    })();
+  </script>
 </body>
 </html>
 {{end}}
