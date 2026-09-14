@@ -153,13 +153,33 @@ Preserve these behaviors unless a request explicitly changes them:
 - Account for the two vertical image samples represented by each half-block character.
 - If cover dimensions change, update the responsive Spotify width threshold and verify the full dashboard layout.
 
+## Testing workflow
+
+- Every behavior change, bug fix, refactor, or new feature must include tests that protect the affected contract. Do not consider an implementation complete without relevant automated tests.
+- Prefer a test-driven development cycle whenever practical:
+  1. Write or update a focused test that describes the intended behavior.
+  2. Run it and confirm that it fails for the expected reason.
+  3. Implement the smallest production change that makes the test pass.
+  4. Refactor while keeping the full suite green.
+- For a bug fix, add a regression test that reproduces the bug before changing production code.
+- If writing the test first is not practical, state the reason and add the tests in the same change immediately after the implementation. This is an exception, not the default workflow.
+- Test observable behavior and package contracts instead of duplicating implementation details.
+- Use unit tests for pure transformations, formatting, responsive calculations, state transitions, validation, and error handling.
+- Add integration tests when behavior crosses package or I/O boundaries, including HTTP provider mapping, persistence, Bubble Tea `Init`/`Update`/`View` flows, and stale asynchronous responses.
+- Keep tests deterministic and self-contained. Use in-memory HTTP transports, temporary directories, fixed timestamps, and mocked domain values. Tests must not require internet access, real credentials, fixed local ports, or sleeps.
+- Exercise representative compact, medium, and wide terminal dimensions for responsive UI changes. Measure rendered output with ANSI-aware helpers such as `lipgloss.Width()` and `lipgloss.Height()`.
+- Preserve or improve coverage for every change. Run `make test-coverage`, keep total repository coverage at or above the configured threshold, and inspect package-level coverage so a high-coverage package does not hide an untested affected package.
+- Run the race detector when changing concurrent state, timers, shared settings, asynchronous commands, or HTTP integrations.
+
 ## Validation workflow
 
-Run these commands after code changes:
+Run these commands after code changes. Always run `make lint`; do not consider the validation complete when the linter reports issues:
 
 ```sh
 gofmt -w main.go internal/data internal/imaging internal/ui
+make lint
 go test ./...
+make test-coverage
 go vet ./...
 git diff --check
 ```

@@ -2,6 +2,7 @@ package ui
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -167,13 +168,5 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func sameStrings(left, right []string) bool {
-	if len(left) != len(right) {
-		return false
-	}
-	for index := range left {
-		if left[index] != right[index] {
-			return false
-		}
-	}
-	return true
+	return slices.Equal(left, right)
 }

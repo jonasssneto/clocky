@@ -152,13 +152,20 @@ func rainTime(times []string, probabilities []int, precipitation []float64, dayO
 			bestIndex, bestProbability = index, probabilities[index]
 		}
 	}
-	if bestIndex < 0 || bestIndex >= len(times) {
+	if bestIndex < 0 {
 		return ""
 	}
-	if len(times[bestIndex]) >= 16 {
-		return times[bestIndex][11:16]
+	selectedTime := ""
+	for index, value := range times {
+		if index == bestIndex {
+			selectedTime = value
+			break
+		}
 	}
-	return times[bestIndex]
+	if len(selectedTime) >= 16 {
+		return selectedTime[11:16]
+	}
+	return selectedTime
 }
 
 type holidaySummary struct {

@@ -19,7 +19,7 @@ type updateProgress struct {
 
 func renderUpdateProgress(width, height int, progress updateProgress) string {
 	innerWidth := max(1, width-boxStyle.GetHorizontalFrameSize())
-	barWidth := max(10, innerWidth-2)
+	barWidth := max(1, innerWidth-lipgloss.Width("  ")-1-lipgloss.Width("100%"))
 	percent := 0
 	if progress.Total > 0 {
 		percent = min(100, max(0, int(progress.Downloaded*100/progress.Total)))
