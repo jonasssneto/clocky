@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os/exec"
 	"runtime"
 	"strings"
 	"testing"
@@ -59,23 +58,23 @@ func TestDownloadAndInstallRejectsHTTPError(t *testing.T) {
 
 func TestRestartCurrentProcessStartsSameExecutable(t *testing.T) {
 	originalStart := startProcess
-	var started *exec.Cmd
-	startProcess = func(command *exec.Cmd) error {
-		started = command
+	var startedExecutable string
+	startProcess = func(executable string, _ []string) error {
+		startedExecutable = executable
 		return nil
 	}
 	t.Cleanup(func() { startProcess = originalStart })
 	if err := RestartCurrentProcess(); err != nil {
 		t.Fatal(err)
 	}
-	if started == nil || started.Path == "" {
-		t.Fatalf("restart command = %#v", started)
+	if startedExecutable == "" {
+		t.Fatal("restart command did not start")
 	}
 }
 
 func TestRestartCurrentProcessReportsStartError(t *testing.T) {
 	originalStart := startProcess
-	startProcess = func(*exec.Cmd) error { return errors.New("start failed") }
+	startProcess = func(string, []string) error { return errors.New("start failed") }
 	t.Cleanup(func() { startProcess = originalStart })
 	if err := RestartCurrentProcess(); err == nil {
 		t.Fatal("restart unexpectedly succeeded")
