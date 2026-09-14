@@ -1,8 +1,7 @@
 package data
 
-// FetchAll aggregates the mock sources updated by the general UI refresh cycle.
-// Spotify is refreshed independently because its provider performs network I/O.
-// The overview and markets remain loaded only during initialization.
+// FetchAll aggregates the currently configured non-Spotify dashboard sources.
+// Weather is fetched asynchronously by the UI so network work never blocks Update.
 func FetchAll() (Weather, Forecast, []NewsItem, []ContributionDay) {
 	return MockToday(), MockTomorrow(), MockNews(), MockContributions()
 }

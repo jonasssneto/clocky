@@ -18,6 +18,9 @@ type Visual struct {
 
 type Snapshot struct {
 	Visual
+	WeatherCity    string
+	WeatherCountry string
+	WeatherKey     string
 	ViewportWidth  int
 	ViewportHeight int
 }
@@ -32,7 +35,7 @@ func New() *Store {
 		Scale: 100, BoxPadding: 1, ColumnGap: 1, ChartHeight: 2,
 		BorderColor: "240", TextColor: "15", DimColor: "240", ValueColor: "228",
 		AccentColor: "#1DB954", Positive: "#39d353", Negative: "#f85149",
-	}, ViewportWidth: 80, ViewportHeight: 24}}
+	}, WeatherCity: "São Paulo", WeatherCountry: "BR", ViewportWidth: 80, ViewportHeight: 24}}
 }
 
 func (s *Store) Get() Snapshot {
@@ -44,6 +47,12 @@ func (s *Store) Get() Snapshot {
 func (s *Store) SetVisual(visual Visual) {
 	s.mu.Lock()
 	s.Visual = visual
+	s.mu.Unlock()
+}
+
+func (s *Store) SetWeather(city, country, key string) {
+	s.mu.Lock()
+	s.WeatherCity, s.WeatherCountry, s.WeatherKey = city, country, key
 	s.mu.Unlock()
 }
 

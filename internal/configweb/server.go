@@ -226,7 +226,16 @@ func (s *Server) handleSettings(writer http.ResponseWriter, request *http.Reques
 	visual.Positive = formColor(request, "positive_color", current.Positive)
 	visual.Negative = formColor(request, "negative_color", current.Negative)
 	s.settings.SetVisual(visual)
-	s.redirectWithMessage(writer, request, "notice", "Visual settings saved.")
+	city := strings.TrimSpace(request.Form.Get("weather_city"))
+	if city == "" {
+		city = s.settings.Get().WeatherCity
+	}
+	country := strings.ToUpper(strings.TrimSpace(request.Form.Get("weather_country")))
+	if len(country) != 2 {
+		country = s.settings.Get().WeatherCountry
+	}
+	s.settings.SetWeather(city, country, strings.TrimSpace(request.Form.Get("weather_key")))
+	s.redirectWithMessage(writer, request, "notice", "Dashboard settings saved.")
 }
 
 func boundedFormInt(request *http.Request, name string, fallback, minimum, maximum int) int {

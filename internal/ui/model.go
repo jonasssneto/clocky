@@ -10,30 +10,33 @@ import (
 )
 
 type Model struct {
-	now           time.Time
-	today         data.Weather
-	tomorrow      data.Forecast
-	news          []data.NewsItem
-	github        []data.ContributionDay
-	track         data.Track
-	overview      data.TodayOverview
-	stocks        []data.MarketAsset
-	funds         []data.MarketAsset
-	marketPage    int
-	marketNext    int
-	marketStep    int
-	marketSlide   bool
-	todayNewsPage bool
-	cover         string
-	spotify       *data.SpotifyClient
-	configWeb     *configweb.Server
-	settings      *settings.Store
-	spotifyErr    string
-	configErr     string
-	spotifyPage   string
-	lastRefresh   time.Time
-	width         int
-	height        int
+	now            time.Time
+	today          data.Weather
+	tomorrow       data.Forecast
+	news           []data.NewsItem
+	github         []data.ContributionDay
+	track          data.Track
+	overview       data.TodayOverview
+	stocks         []data.MarketAsset
+	funds          []data.MarketAsset
+	marketPage     int
+	marketNext     int
+	marketStep     int
+	marketSlide    bool
+	todayNewsPage  bool
+	cover          string
+	spotify        *data.SpotifyClient
+	configWeb      *configweb.Server
+	settings       *settings.Store
+	weatherCity    string
+	weatherCountry string
+	weatherKey     string
+	spotifyErr     string
+	configErr      string
+	spotifyPage    string
+	lastRefresh    time.Time
+	width          int
+	height         int
 }
 
 func NewModel() Model {
@@ -60,24 +63,27 @@ func NewModel() Model {
 		configurationServer.SetSettings(visualSettings)
 	}
 	return Model{
-		now:         time.Now(),
-		today:       today,
-		tomorrow:    tomorrow,
-		news:        news,
-		github:      github,
-		track:       data.Track{},
-		overview:    data.MockTodayOverview(),
-		stocks:      data.MockStocks(),
-		funds:       data.MockFunds(),
-		spotify:     spotifyClient,
-		configWeb:   configurationServer,
-		settings:    visualSettings,
-		spotifyErr:  spotifyMessage,
-		configErr:   errorMessage(configurationErr),
-		spotifyPage: configurationURL,
-		lastRefresh: time.Now(),
-		width:       80,
-		height:      24,
+		now:            time.Now(),
+		today:          today,
+		tomorrow:       tomorrow,
+		news:           news,
+		github:         github,
+		track:          data.Track{},
+		overview:       data.MockTodayOverview(),
+		stocks:         data.MockStocks(),
+		funds:          data.MockFunds(),
+		spotify:        spotifyClient,
+		configWeb:      configurationServer,
+		settings:       visualSettings,
+		weatherCity:    visualSettings.Get().WeatherCity,
+		weatherCountry: visualSettings.Get().WeatherCountry,
+		weatherKey:     visualSettings.Get().WeatherKey,
+		spotifyErr:     spotifyMessage,
+		configErr:      errorMessage(configurationErr),
+		spotifyPage:    configurationURL,
+		lastRefresh:    time.Now(),
+		width:          80,
+		height:         24,
 	}
 }
 
@@ -89,5 +95,5 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	return tea.Batch(tickEvery(), refreshEvery(), rotateMarketAfter(), todayNewsAfter(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
 }

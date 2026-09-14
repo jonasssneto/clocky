@@ -17,6 +17,12 @@ type refreshMsg time.Time
 type marketRotateMsg time.Time
 type marketFrameMsg time.Time
 type todayNewsMsg time.Time
+type weatherMsg struct {
+	today    data.Weather
+	tomorrow data.Forecast
+	overview data.TodayOverview
+	err      error
+}
 type coverLoadedMsg struct {
 	url   string
 	cover string
@@ -56,6 +62,15 @@ func marketFrameAfter() tea.Cmd {
 
 func todayNewsAfter() tea.Cmd {
 	return tea.Tick(todayNewsInterval, func(t time.Time) tea.Msg { return todayNewsMsg(t) })
+}
+
+func fetchWeather(city, country, key string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		today, tomorrow, overview, err := data.FetchLiveWeather(ctx, city, country, key)
+		return weatherMsg{today: today, tomorrow: tomorrow, overview: overview, err: err}
+	}
 }
 
 func pollSpotifyAfter() tea.Cmd {

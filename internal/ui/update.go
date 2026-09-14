@@ -18,17 +18,34 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.settings.SetViewport(msg.Width, msg.Height)
 		}
 
+	case weatherMsg:
+		if msg.err == nil {
+			if msg.overview.Holiday == "" {
+				msg.overview.Holiday = m.overview.Holiday
+				msg.overview.HolidayDate = m.overview.HolidayDate
+				msg.overview.DaysUntil = m.overview.DaysUntil
+			}
+			m.today, m.tomorrow, m.overview = msg.today, msg.tomorrow, msg.overview
+		}
+
 	case tickMsg:
 		m.now = time.Time(msg)
 		if m.track.Playing && m.track.ElapsedSec < m.track.TotalSec {
 			m.track.ElapsedSec++
 		}
+		if m.settings != nil {
+			weather := m.settings.Get()
+			if weather.WeatherCity != m.weatherCity || weather.WeatherCountry != m.weatherCountry || weather.WeatherKey != m.weatherKey {
+				m.weatherCity, m.weatherCountry, m.weatherKey = weather.WeatherCity, weather.WeatherCountry, weather.WeatherKey
+				return m, tea.Batch(tickEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey))
+			}
+		}
 		return m, tickEvery()
 
 	case refreshMsg:
-		m.today, m.tomorrow, m.news, m.github = data.FetchAll()
+		_, _, m.news, m.github = data.FetchAll()
 		m.lastRefresh = time.Time(msg)
-		return m, refreshEvery()
+		return m, tea.Batch(refreshEvery(), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey))
 
 	case spotifyPollMsg:
 		return m, fetchSpotifyTrack(m.spotify)

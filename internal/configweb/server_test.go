@@ -45,6 +45,8 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		"border_color":   {"#ffffff"},
 		"accent_color":   {"#ff00aa"},
 		"positive_color": {"#00ff00"},
+		"weather_city":   {"Curitiba"},
+		"weather_key":    {"optional-key"},
 	}
 	request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -54,7 +56,7 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		t.Fatalf("settings status = %d", recorder.Code)
 	}
 	visual := server.settings.Get().Visual
-	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" {
+	if visual.Scale != 80 || visual.BoxPadding != 0 || visual.ColumnGap != 3 || visual.ChartHeight != 4 || visual.AccentColor != "#ff00aa" || server.settings.Get().WeatherCity != "Curitiba" || server.settings.Get().WeatherKey != "optional-key" {
 		t.Fatalf("unexpected visual settings: %+v", visual)
 	}
 }
