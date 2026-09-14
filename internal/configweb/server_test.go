@@ -18,7 +18,7 @@ func TestDashboardShowsIntegrationStatus(t *testing.T) {
 
 	integration := &fakeIntegration{connected: true}
 	server := testServer(t, integration)
-	request := httptest.NewRequest(http.MethodGet, server.PageURL(), nil)
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, server.PageURL(), nil)
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, request)
 
@@ -55,7 +55,7 @@ func TestVisualSettingsAreSaved(t *testing.T) {
 		"news_limit":            {"5"},
 		"news_rotation_seconds": {"90"},
 	}
-	request := httptest.NewRequest(http.MethodPost, "/settings", strings.NewReader(form.Encode()))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/settings", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, request)
@@ -88,7 +88,7 @@ func TestMarketSymbolSearchFiltersFIIs(t *testing.T) {
 			Body:       io.NopCloser(strings.NewReader(`{"results":[{"symbol":"MXRF11","name":"Maxi Renda","subType":"fii"}]}`)),
 		}, nil
 	})}
-	request := httptest.NewRequest(http.MethodGet, "/api/market-symbols?q=mxrf&kind=fii", nil)
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/api/market-symbols?q=mxrf&kind=fii", nil)
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, request)
 
@@ -114,7 +114,7 @@ func TestConnectRedirectAndCallback(t *testing.T) {
 	integration := &fakeIntegration{}
 	server := testServer(t, integration)
 	connectForm := url.Values{"csrf_token": {server.csrfToken}}
-	connectRequest := httptest.NewRequest(http.MethodPost, "/integrations/spotify/connect", strings.NewReader(connectForm.Encode()))
+	connectRequest := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/integrations/spotify/connect", strings.NewReader(connectForm.Encode()))
 	connectRequest.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	connectRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(connectRecorder, connectRequest)
@@ -126,7 +126,7 @@ func TestConnectRedirectAndCallback(t *testing.T) {
 		t.Fatalf("connect redirect = %q", location)
 	}
 
-	callbackRequest := httptest.NewRequest(http.MethodGet, "/callback?code=authorization-code&state=expected-state", nil)
+	callbackRequest := httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/callback?code=authorization-code&state=expected-state", nil)
 	callbackRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(callbackRecorder, callbackRequest)
 	if callbackRecorder.Code != http.StatusOK {
@@ -142,7 +142,7 @@ func TestDisconnectRequiresCSRFAndClearsIntegration(t *testing.T) {
 
 	integration := &fakeIntegration{connected: true}
 	server := testServer(t, integration)
-	invalidRequest := httptest.NewRequest(http.MethodPost, "/integrations/spotify/disconnect", nil)
+	invalidRequest := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/integrations/spotify/disconnect", nil)
 	invalidRecorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(invalidRecorder, invalidRequest)
 	if invalidRecorder.Code != http.StatusSeeOther {
@@ -153,7 +153,7 @@ func TestDisconnectRequiresCSRFAndClearsIntegration(t *testing.T) {
 	}
 
 	form := url.Values{"csrf_token": {server.csrfToken}}
-	request := httptest.NewRequest(http.MethodPost, "/integrations/spotify/disconnect", strings.NewReader(form.Encode()))
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/integrations/spotify/disconnect", strings.NewReader(form.Encode()))
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	recorder := httptest.NewRecorder()
 	server.Handler().ServeHTTP(recorder, request)

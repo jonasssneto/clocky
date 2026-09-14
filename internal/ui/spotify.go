@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
 	"clocky/internal/data"
 	"clocky/internal/imaging"
 )

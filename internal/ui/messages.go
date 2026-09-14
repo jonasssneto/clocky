@@ -5,12 +5,12 @@ import (
 	"errors"
 	"time"
 
+	tea "charm.land/bubbletea/v2"
+
 	"clocky/internal/configweb"
 	"clocky/internal/data"
 	"clocky/internal/imaging"
 	"clocky/internal/settings"
-
-	tea "charm.land/bubbletea/v2"
 )
 
 type tickMsg time.Time
@@ -173,7 +173,7 @@ func pollSpotifyAfter() tea.Cmd {
 func fetchSpotifyTrack(client *data.SpotifyClient) tea.Cmd {
 	return func() tea.Msg {
 		if client == nil {
-			return spotifyTrackMsg{err: errors.New("Spotify is not configured")}
+			return spotifyTrackMsg{err: errors.New("Spotify is not configured")} //nolint:staticcheck // Spotify is a proper noun.
 		}
 		ctx, cancel := context.WithTimeout(context.Background(), 12*time.Second)
 		defer cancel()

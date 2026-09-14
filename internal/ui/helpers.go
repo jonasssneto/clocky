@@ -9,6 +9,7 @@ import (
 
 var marqueeState struct {
 	sync.RWMutex
+
 	offset int
 }
 

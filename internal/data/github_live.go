@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,7 +26,7 @@ type githubContributionResponse struct {
 func FetchGitHubContributions(ctx context.Context, username string) ([]ContributionDay, int, error) {
 	username = strings.TrimSpace(username)
 	if username == "" {
-		return nil, 0, fmt.Errorf("GitHub profile is not configured")
+		return nil, 0, errors.New("GitHub profile is not configured")
 	}
 	endpoint := "https://github-contributions-api.jogruber.de/v4/" + url.PathEscape(username) + "?y=last"
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)

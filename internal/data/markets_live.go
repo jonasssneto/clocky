@@ -3,7 +3,7 @@ package data
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io"
 	"net/http"
 	"strconv"
@@ -84,7 +84,7 @@ func FetchMarketFunds(ctx context.Context, symbols []string) ([]MarketAsset, err
 		})
 	}
 	if len(assets) == 0 {
-		return nil, fmt.Errorf("market API returned no quotes for configured symbols")
+		return nil, errors.New("market API returned no quotes for configured symbols")
 	}
 	return assets, nil
 }

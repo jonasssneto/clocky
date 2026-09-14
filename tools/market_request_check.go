@@ -2,6 +2,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,7 +21,7 @@ func main() {
 	for _, symbol := range symbols {
 		symbol = strings.ToUpper(strings.TrimSpace(symbol))
 		endpoint := "https://capitalagora.com.br/api/ativo/" + symbol
-		request, err := http.NewRequest(http.MethodGet, endpoint, nil)
+		request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, endpoint, nil)
 		if err != nil {
 			fmt.Printf("%s: request error: %v\n", symbol, err)
 			continue

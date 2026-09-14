@@ -248,7 +248,7 @@ func (c *SpotifyClient) CompleteAuthorization(ctx context.Context, code string) 
 	c.verifier = ""
 	c.mu.Unlock()
 	if verifier == "" {
-		return errors.New("Spotify authorization session expired; start again")
+		return errors.New("Spotify authorization session expired; start again") //nolint:staticcheck // Spotify is a proper noun.
 	}
 	return c.exchangeAuthorizationCode(ctx, code, verifier)
 }
@@ -412,7 +412,7 @@ func (c *SpotifyClient) requestToken(ctx context.Context, values url.Values) (sp
 		return spotifyToken{}, err
 	}
 	if payload.AccessToken == "" {
-		return spotifyToken{}, errors.New("Spotify token response did not include an access token")
+		return spotifyToken{}, errors.New("Spotify token response did not include an access token") //nolint:staticcheck // Spotify is a proper noun.
 	}
 	return spotifyToken{
 		AccessToken:  payload.AccessToken,
@@ -461,11 +461,11 @@ func (c *SpotifyClient) saveToken() error {
 	temporaryName := temporary.Name()
 	defer os.Remove(temporaryName)
 	if err := temporary.Chmod(0o600); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return err
 	}
 	if _, err := temporary.Write(contents); err != nil {
-		temporary.Close()
+		_ = temporary.Close()
 		return err
 	}
 	if err := temporary.Close(); err != nil {

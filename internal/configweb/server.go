@@ -134,7 +134,8 @@ func (s *Server) PageURL() string {
 }
 
 func (s *Server) Serve(ctx context.Context) error {
-	listener, err := net.Listen("tcp", s.listenAddress)
+	var listenConfig net.ListenConfig
+	listener, err := listenConfig.Listen(ctx, "tcp", s.listenAddress)
 	if err != nil {
 		return fmt.Errorf("listen for configuration requests on %s: %w", s.listenAddress, err)
 	}

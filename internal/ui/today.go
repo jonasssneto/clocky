@@ -2,10 +2,12 @@ package ui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"charm.land/lipgloss/v2"
+
 	"clocky/internal/data"
 )
 
@@ -70,7 +72,7 @@ func renderTodayBox(width, height int, now time.Time, overview data.TodayOvervie
 			lines = append(lines, fmt.Sprintf("Min %d°C · Max %d°C", overview.TempLow, overview.TempHigh))
 		}
 		if maxLines >= 5 {
-			lines = append(lines, fmt.Sprintf("UV index  %s · %s", value.Render(fmt.Sprintf("%d", overview.UVIndex)), overview.UVLevel))
+			lines = append(lines, fmt.Sprintf("UV index  %s · %s", value.Render(strconv.Itoa(overview.UVIndex)), overview.UVLevel))
 		}
 		if maxLines >= 6 && overview.RainProbability > 0 {
 			rain := fmt.Sprintf("Rain      %d%%", overview.RainProbability)

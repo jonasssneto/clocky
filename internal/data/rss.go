@@ -3,6 +3,7 @@ package data
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -67,7 +68,7 @@ func FetchRSS(ctx context.Context, feeds []string, limit int) ([]NewsItem, error
 		}
 	}
 	if len(results) == 0 && failures > 0 {
-		return nil, fmt.Errorf("all RSS feeds failed")
+		return nil, errors.New("all RSS feeds failed")
 	}
 	sort.SliceStable(results, func(left, right int) bool { return results[left].date.After(results[right].date) })
 	if limit < 1 {
@@ -119,7 +120,7 @@ func fetchRSSFeed(ctx context.Context, client *http.Client, feedURL string) ([]r
 		}
 	}
 	if len(results) == 0 {
-		return nil, fmt.Errorf("RSS feed has no items")
+		return nil, errors.New("RSS feed has no items")
 	}
 	sort.SliceStable(results, func(left, right int) bool { return results[left].date.After(results[right].date) })
 	return results, nil

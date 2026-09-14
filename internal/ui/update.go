@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"clocky/internal/data"
-
 	tea "charm.land/bubbletea/v2"
+
+	"clocky/internal/data"
 )
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {

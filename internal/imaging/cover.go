@@ -1,6 +1,7 @@
 package imaging
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/jpeg"
@@ -12,7 +13,11 @@ import (
 
 func DownloadAndRenderCover(url string, width, height int) (string, error) {
 	client := http.Client{Timeout: 10 * time.Second}
-	response, err := client.Get(url)
+	request, err := http.NewRequestWithContext(context.Background(), http.MethodGet, url, nil)
+	if err != nil {
+		return "", err
+	}
+	response, err := client.Do(request)
 	if err != nil {
 		return "", err
 	}

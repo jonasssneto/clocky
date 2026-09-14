@@ -2,6 +2,7 @@ package ui
 
 import (
 	"charm.land/lipgloss/v2"
+
 	"clocky/internal/settings"
 )
 

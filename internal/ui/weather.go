@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
+
 	"clocky/internal/data"
 )
 
@@ -13,8 +14,8 @@ func renderTodayColumn(weather data.Weather, title string) string {
 	fmt.Fprintln(&rendered, dim.Render(title))
 	lines := []string{
 		fmt.Sprintf("%s  %s", weather.Condition, value.Render(fmt.Sprintf("%d°C", weather.TempC))),
-		fmt.Sprintf("Feels like: %s", value.Render(fmt.Sprintf("%d°C", weather.FeelsLike))),
-		fmt.Sprintf("Wind: %s", weather.Wind),
+		"Feels like: " + value.Render(fmt.Sprintf("%d°C", weather.FeelsLike)),
+		"Wind: " + weather.Wind,
 		fmt.Sprintf("Humidity: %d%%", weather.Humidity),
 	}
 	for index, icon := range weather.Icon {
@@ -36,8 +37,8 @@ func renderTomorrowColumn(forecast data.Forecast, title string) string {
 	}
 	lines := []string{
 		forecast.Condition,
-		fmt.Sprintf("High: %s", value.Render(fmt.Sprintf("%d°C", forecast.TempHigh))),
-		fmt.Sprintf("Low: %s", value.Render(fmt.Sprintf("%d°C", forecast.TempLow))),
+		"High: " + value.Render(fmt.Sprintf("%d°C", forecast.TempHigh)),
+		"Low: " + value.Render(fmt.Sprintf("%d°C", forecast.TempLow)),
 		rain,
 	}
 	for index, icon := range forecast.Icon {

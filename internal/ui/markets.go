@@ -5,8 +5,9 @@ import (
 	"strings"
 
 	"charm.land/lipgloss/v2"
-	"clocky/internal/data"
 	"github.com/charmbracelet/x/ansi"
+
+	"clocky/internal/data"
 )
 
 func formatBrazilianReal(price float64) string {

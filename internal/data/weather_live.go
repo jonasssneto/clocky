@@ -112,19 +112,21 @@ func FetchLiveWeather(ctx context.Context, city, country, apiKey string) (Weathe
 	if holiday, err := fetchNextHoliday(ctx, client, country, time.Now()); err == nil {
 		overview.Holiday, overview.HolidayDate, overview.DaysUntil = holiday.Name, holiday.DateLabel, holiday.DaysUntil
 	}
-	return Weather{
-			Condition: weatherCondition, Icon: weatherIcon,
-			TempC: int(forecast.Current.Temperature + 0.5), FeelsLike: int(forecast.Current.FeelsLike + 0.5),
-			Wind:            windArrow(forecast.Current.WindDirection) + " " + strconv.Itoa(int(forecast.Current.WindSpeed+0.5)) + " km/h",
-			Humidity:        int(forecast.Current.Humidity + 0.5),
-			RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 0),
-			RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 0),
-		}, Forecast{
-			Condition: tomorrowCondition, Icon: tomorrowIcon,
-			TempHigh: int(forecast.Daily.TempMax[1] + 0.5), TempLow: int(forecast.Daily.TempMin[1] + 0.5),
-			RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 24),
-			RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 24),
-		}, overview, nil
+	today := Weather{
+		Condition: weatherCondition, Icon: weatherIcon,
+		TempC: int(forecast.Current.Temperature + 0.5), FeelsLike: int(forecast.Current.FeelsLike + 0.5),
+		Wind:            windArrow(forecast.Current.WindDirection) + " " + strconv.Itoa(int(forecast.Current.WindSpeed+0.5)) + " km/h",
+		Humidity:        int(forecast.Current.Humidity + 0.5),
+		RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 0),
+		RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 0),
+	}
+	tomorrow := Forecast{
+		Condition: tomorrowCondition, Icon: tomorrowIcon,
+		TempHigh: int(forecast.Daily.TempMax[1] + 0.5), TempLow: int(forecast.Daily.TempMin[1] + 0.5),
+		RainProbability: rainProbability(forecast.Hourly.PrecipitationProbability, 24),
+		RainTime:        rainTime(forecast.Hourly.Time, forecast.Hourly.PrecipitationProbability, forecast.Hourly.Precipitation, 24),
+	}
+	return today, tomorrow, overview, nil
 }
 
 func rainProbability(probabilities []int, dayOffset int) int {

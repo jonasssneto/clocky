@@ -24,6 +24,7 @@ type Visual struct {
 
 type Snapshot struct {
 	Visual
+
 	WeatherCity             string   `yaml:"weather_city"`
 	WeatherCountry          string   `yaml:"weather_country"`
 	WeatherKey              string   `yaml:"weather_key"`
@@ -47,8 +48,9 @@ type Snapshot struct {
 }
 
 type Store struct {
-	mu sync.RWMutex
 	Snapshot
+
+	mu         sync.RWMutex
 	configPath string
 }
 
