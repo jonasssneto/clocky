@@ -38,7 +38,11 @@ func renderUpdateProgress(width, height int, progress updateProgress) string {
 	if eta != "" {
 		etaLine = strings.Repeat(" ", max(0, innerWidth-lipgloss.Width("ETA "+eta))) + "ETA " + eta
 	}
-	lines := []string{"Downloading " + truncateLine(progress.Version, max(1, innerWidth-11)), "", spotify.Render(barLine)}
+	status := progress.Status
+	if status == "" {
+		status = "Downloading…"
+	}
+	lines := []string{truncateLine(status, innerWidth), truncateLine(progress.Version, innerWidth), "", spotify.Render(barLine)}
 	if etaLine != "" {
 		lines = append(lines, etaLine)
 	}

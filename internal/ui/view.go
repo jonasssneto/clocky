@@ -66,6 +66,11 @@ func (m Model) View() tea.View {
 	}
 	width := max(minimumDashboardDimension, m.width)
 	height := max(minimumDashboardDimension, m.height)
+	if m.update != nil {
+		view := tea.NewView(renderUpdateProgress(width, height, *m.update))
+		view.AltScreen = true
+		return view
+	}
 	columnGap := visualColumnGap
 
 	todayCol := renderTodayColumn(m.today, weatherTitle(m.weatherCity, "Today"))

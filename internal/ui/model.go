@@ -42,6 +42,8 @@ type Model struct {
 	spotifyErr      string
 	configErr       string
 	spotifyPage     string
+	update          *updateProgress
+	updateEvents    <-chan tea.Msg
 	lastRefresh     time.Time
 	width           int
 	height          int
@@ -108,5 +110,9 @@ func errorMessage(err error) string {
 }
 
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(tickEvery(), marqueeAfter(m.settings), refreshEvery(m.settings), rotateMarketAfter(m.settings), todayNewsAfter(m.settings), weatherAfter(m.settings), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb))
+	commands := []tea.Cmd{tickEvery(), marqueeAfter(m.settings), refreshEvery(m.settings), rotateMarketAfter(m.settings), todayNewsAfter(m.settings), weatherAfter(m.settings), fetchWeather(m.weatherCity, m.weatherCountry, m.weatherKey), fetchGitHub(m.githubUser), fetchRSS(m.rssFeeds, m.newsLimit), fetchMarket(m.fundSymbols, false), fetchMarket(m.stockSymbols, true), fetchSpotifyTrack(m.spotify), serveConfiguration(m.configWeb)}
+	if m.configWeb != nil {
+		commands = append(commands, waitUpdateRequest(m.configWeb.UpdateRequests()))
+	}
+	return tea.Batch(commands...)
 }
