@@ -12,14 +12,16 @@ var (
 )
 
 var (
-	dim        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
-	clockStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true)
-	value      = lipgloss.NewStyle().Foreground(lipgloss.Color("228"))
-	sunIcon    = lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
-	spotify    = lipgloss.NewStyle().Foreground(lipgloss.Color("#1DB954"))
-	positive   = lipgloss.NewStyle().Foreground(lipgloss.Color("#39d353"))
-	negative   = lipgloss.NewStyle().Foreground(lipgloss.Color("#f85149"))
-	heatLevels = []lipgloss.Style{
+	dim          = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	clockStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("15")).Bold(true)
+	value        = lipgloss.NewStyle().Foreground(lipgloss.Color("228"))
+	sunIcon      = lipgloss.NewStyle().Foreground(lipgloss.Color("220"))
+	weatherSun   = lipgloss.NewStyle().Foreground(lipgloss.Color("#f59e0b"))
+	weatherCloud = lipgloss.NewStyle().Foreground(lipgloss.Color("#60a5fa"))
+	spotify      = lipgloss.NewStyle().Foreground(lipgloss.Color("#1DB954"))
+	positive     = lipgloss.NewStyle().Foreground(lipgloss.Color("#39d353"))
+	negative     = lipgloss.NewStyle().Foreground(lipgloss.Color("#f85149"))
+	heatLevels   = []lipgloss.Style{
 		lipgloss.NewStyle().Foreground(lipgloss.Color("237")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("#0e4429")),
 		lipgloss.NewStyle().Foreground(lipgloss.Color("#006d32")),
@@ -42,6 +44,8 @@ func applyVisualSettings(snapshot settings.Snapshot) {
 	clockStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.TextColor)).Bold(true)
 	value = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.ValueColor))
 	sunIcon = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.AccentColor))
+	weatherSun = lipgloss.NewStyle().Foreground(lipgloss.Color("#f59e0b"))
+	weatherCloud = lipgloss.NewStyle().Foreground(lipgloss.Color("#60a5fa"))
 	spotify = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.AccentColor))
 	positive = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.Positive))
 	negative = lipgloss.NewStyle().Foreground(lipgloss.Color(visual.Negative))

@@ -22,7 +22,7 @@ func renderTodayColumn(weather data.Weather, title string) string {
 		if index < len(lines) {
 			info = lines[index]
 		}
-		fmt.Fprintf(&rendered, "%s  %s\n", sunIcon.Render(icon), info)
+		fmt.Fprintf(&rendered, "%s  %s\n", renderWeatherIcon(icon), info)
 	}
 	return strings.TrimRight(rendered.String(), "\n")
 }
@@ -45,9 +45,25 @@ func renderTomorrowColumn(forecast data.Forecast, title string) string {
 		if index < len(lines) {
 			info = lines[index]
 		}
-		fmt.Fprintf(&rendered, "%s  %s\n", sunIcon.Render(icon), info)
+		fmt.Fprintf(&rendered, "%s  %s\n", renderWeatherIcon(icon), info)
 	}
 	return strings.TrimRight(rendered.String(), "\n")
+}
+
+func renderWeatherIcon(icon string) string {
+	var rendered strings.Builder
+	for _, character := range icon {
+		style := weatherCloud
+		switch character {
+		case '/', '\\', '"':
+			style = weatherSun
+		case ' ', '\t':
+			rendered.WriteRune(character)
+			continue
+		}
+		rendered.WriteString(style.Render(string(character)))
+	}
+	return rendered.String()
 }
 
 func renderCompactWeather(weather data.Weather, cardWidth int, city string) string {
