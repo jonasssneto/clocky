@@ -34,6 +34,18 @@ func TestDashboardShowsIntegrationStatus(t *testing.T) {
 	}
 }
 
+func TestDashboardReflectsIntegrationAddedAfterStartup(t *testing.T) {
+	t.Parallel()
+	server := testServer(t, &fakeIntegration{})
+	server.SetIntegration(&fakeIntegration{connected: true})
+	request := httptest.NewRequestWithContext(context.Background(), http.MethodGet, server.PageURL(), nil)
+	recorder := httptest.NewRecorder()
+	server.Handler().ServeHTTP(recorder, request)
+	if !strings.Contains(recorder.Body.String(), "Connected") {
+		t.Fatal("dashboard did not render the integration added after startup")
+	}
+}
+
 func TestVisualSettingsAreSaved(t *testing.T) {
 	t.Parallel()
 

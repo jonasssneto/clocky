@@ -358,8 +358,14 @@ func (s *Server) handleDashboard(writer http.ResponseWriter, request *http.Reque
 		methodNotAllowed(writer, http.MethodGet)
 		return
 	}
-	integrations := make([]integrationView, 0, len(s.integrations))
+	s.mu.RLock()
+	registered := make([]oauth.Integration, 0, len(s.integrations))
 	for _, integration := range s.integrations {
+		registered = append(registered, integration)
+	}
+	s.mu.RUnlock()
+	integrations := make([]integrationView, 0, len(registered))
+	for _, integration := range registered {
 		initial := "?"
 		for _, character := range integration.Name() {
 			initial = strings.ToUpper(string(character))
@@ -500,7 +506,9 @@ func (s *Server) handleIntegration(writer http.ResponseWriter, request *http.Req
 		http.NotFound(writer, request)
 		return
 	}
+	s.mu.RLock()
 	integration, exists := s.integrations[parts[0]]
+	s.mu.RUnlock()
 	if !exists {
 		http.NotFound(writer, request)
 		return
